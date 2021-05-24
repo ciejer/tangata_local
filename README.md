@@ -38,7 +38,8 @@ This approach may take some time, but not out of reach - SQL is structured by de
 
 ## To Serve Tāngata:
 
-`./tangata <../../absolute/or/relative/path/to/dbt/folder/>`
+- Run `./tangata <../../absolute/or/relative/path/to/dbt/folder/>`
+- Tangata will be served at http://localhost:8080
 
 ## Where's the React code?
 
