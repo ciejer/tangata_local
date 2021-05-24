@@ -8,7 +8,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
+# build/ # Removed as this is used for flask app
 develop-eggs/
 dist/
 downloads/
@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Local dbt_ catalog & index
+tangata_catalog_index.json
+tangata_catalog.json
