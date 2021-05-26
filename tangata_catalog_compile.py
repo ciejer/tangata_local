@@ -1,12 +1,10 @@
-import json
-import os
+import io
 from yaml import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
-import re
-from pydriller import Repository
+import git
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
@@ -160,43 +158,44 @@ def getGitHistory(fullCatalog):
         days = f'{rd.days} days' if rd.days > 0 else ''
         return f'{years}{months}{days}'
     def gitLog():
-        allCommits = []
         filesList = {}
-        repoCommits = Repository(dbtpath).traverse_commits() 
-        #  Running this per file takes a very long time. Try refactor. 
-        #  gitrepo = repository(dbtpath) then loop through commits.modified_files
-        #  For each modified_files, populate a dict of files.
-        for commit in repoCommits:
-            print(commit.author_date)
-            for thisFile in commit.modified_files:
-                if thisFile.new_path != '_None_':
-                    filePath = thisFile.new_path
-                else:
-                    filePath = thisFile.old_path
-                if filePath not in filesList:
-                    filesList[filePath] = {"all_commits":[]}
-                if thisFile.change_type.name == 'ADD':
-                    commitState = 'A'
-                elif thisFile.change_type.name == 'MODIFY':
-                    commitState = "M"
-                elif thisFile.change_type.name == 'DELETE':
-                    commitState = "D"
-                else:
-                    commitState = "R"
-                filesList[filePath]['all_commits'].append({
-                    "status": [
-                        commitState
-                    ],
-                    "hash": commit.hash,
-                    "abbrevHash": commit.hash[0:7],
-                    "subject": commit.msg,
-                    "authorName": commit.author.name,
-                    "authorDateRel": prettyRelativeDate(commit.author_date)+' ago',
-                    "authorDate": commit.author_date.strftime("%Y-%m-%d %H:%M:%S %z")
+        repo = git.Repo(dbtpath)
+        git_bin = repo.git
+        git_log = git_bin.execute('git log --numstat --pretty=format:"\t\t\t%H\t%h\t%at\t%aN\t%s"')
+        git_log[:80]
+        commits_raw = io.StringIO(git_log)
+        hash = ''
+        abbrevHash = ''
+        subject = ''
+        authorName = ''
+        authorDateRel = ''
+        authorDate = ''
+        while True:
+            fullLine = commits_raw.readline()
+            if fullLine == '': break
+            lineTabs = fullLine.split("\t")
+            if lineTabs[0] == '' and lineTabs[1] == '':
+                hash = lineTabs[3]
+                abbrevHash = lineTabs[4]
+                subject = lineTabs[7]
+                authorName = lineTabs[6]
+                authorDate = datetime.fromtimestamp(int(lineTabs[5]))
+                authorDateRel = prettyRelativeDate(authorDate)+' ago'
+                print(authorDate)
+            elif len(lineTabs) == 3:
+                thisFile = lineTabs[2].rstrip("\n").replace("/","\\")
+                if thisFile not in filesList:
+                    filesList[thisFile] = {"all_commits":[]}
+                filesList[thisFile]['all_commits'].append({
+                    "hash": hash,
+                    "abbrevHash": abbrevHash,
+                    "subject": subject.rstrip("\n"),
+                    "authorName": authorName,
+                    "authorDateRel": authorDateRel,
+                    "authorDate": authorDate.strftime("%Y-%m-%d %H:%M:%S %z")
                 })
         for thisFile in filesList:
             all_contributors = []
-            print(thisFile)
             for thisCommit in filesList[thisFile]['all_commits']:
                 all_contributors.append(thisCommit['authorName'])
             filesList[thisFile]['created_by'] = filesList[thisFile]['all_commits'][0]['authorName']
@@ -205,54 +204,8 @@ def getGitHistory(fullCatalog):
             filesList[thisFile]['all_contributors'] = list(dict.fromkeys(all_contributors))
         return filesList
 
-
-        # repoCommits = Repository(dbtpath, filepath=filePath).traverse_commits() 
-        # #  Running this per file takes a very long time. Try refactor. 
-        # #  gitrepo = repository(dbtpath) then loop through commits.modified_files
-        # #  For each modified_files, populate a dict of files.
-        # for commit in repoCommits:
-        #     all_contributors.append(commit.author.name)
-        #     filesList = []
-        #     commitState = ""
-        #     for thisFile in commit.modified_files:
-        #         filesList.append(thisFile.filename)
-        #         if thisFile.new_path == filePath:
-        #             if thisFile.change_type.name == 'ADD':
-        #                 commitState = 'A'
-        #             elif thisFile.change_type.name == 'MODIFY':
-        #                 commitState = "M"
-        #             elif thisFile.change_type.name == 'DELETE':
-        #                 commitState = "D"
-        #             else:
-        #                 commitState = "R"
-        #     if commitState == "":
-        #         commitState = "M"
-        #     allCommits.append({
-        #         "status": [
-        #             commitState
-        #         ],
-        #         "files": filesList,
-        #         "hash": commit.hash,
-        #         "abbrevHash": commit.hash[0:7],
-        #         "subject": commit.msg,
-        #         "authorName": commit.author.name,
-        #         "authorDateRel": prettyRelativeDate(commit.author_date)+' ago',
-        #         "authorDate": commit.author_date.strftime("%Y-%m-%d %H:%M:%S %z")
-        #     })
-        # return({
-        #     "created_by":  allCommits[0]['authorName'],
-        #     "created_date": allCommits[0]['authorDate'],
-        #     "created_relative_date": allCommits[0]['authorDateRel'],
-        #     "all_contributors": list(dict.fromkeys(all_contributors)),
-        #     "all_commits": allCommits
-        #     })
     
     fullGitLog = gitLog()
-    # print(fullGitLog)
-    # gitLogWrite = open("./gitlog.json", "w")
-    # json.dump(fullGitLog, gitLogWrite)
-    # gitLogRead = open("./gitlog.json", "r")
-    # fullGitLog = json.load(gitLogRead)
     for catalogNode in fullCatalog.values():
         if catalogNode['model_path'] in fullGitLog.keys():
             eachGitLog = fullGitLog[catalogNode['model_path']]

@@ -45,16 +45,21 @@ def catalog():
         f.close()
 
 def refreshMetadata(sendToast):
-    print("Refreshing Metadata...")
+    print("Refreshing DBT Catalog...")
     if not os.path.isfile(dbtpath + "target/catalog.json"):
         print("DBT generated docs not available..")
         sendToast("catalog.json not found in folder.", "error")
         return
     tangata_catalog_compile.setDBTPath(dbtpath)
+    print("Compiling Catalog Nodes...")
     assemblingFullCatalog = tangata_catalog_compile.compileCatalogNodes()
+    print("Compiling Catalog Index...")
     assemblingCatalogIndex = tangata_catalog_compile.compileSearchIndex(assemblingFullCatalog)
+    print("Assembling Lineage...")
     tangata_catalog_compile.getModelLineage(assemblingFullCatalog)
+    print("Assembling Git History...")
     tangata_catalog_compile.getGitHistory(assemblingFullCatalog)
+    print("Storing Compiled Catalog...")
     catalogWrite = open(catalogPath, "w")
     json.dump(assemblingFullCatalog, catalogWrite)
     catalogWrite.close()
