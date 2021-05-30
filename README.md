@@ -32,7 +32,7 @@ This approach may take some time, but not out of reach - SQL is structured by de
 ## Installation Instructions
 
 - Install dependencies:  
-`pip install Flask Flask-SocketIO PyYAML PyDriller python-dateutil`
+`pip install Flask Flask-SocketIO PyYAML PyDriller python-dateutil simple-websocket`
 
 - Clone project to local folder
 
