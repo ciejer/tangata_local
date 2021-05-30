@@ -160,6 +160,9 @@ def getGitHistory(fullCatalog):
     def gitLog():
         filesList = {}
         repo = git.Repo(dbtpath)
+        commitBaseURL = repo.remotes.origin.url.replace(".git","") + "/commits/"
+        if "@" in commitBaseURL:
+            commitBaseURL = commitBaseURL.split("@")[1].replace(":","/")
         git_bin = repo.git
         git_log = git_bin.execute('git log --numstat --pretty=format:"\t\t\t%H\t%h\t%at\t%aN\t%s"')
         git_log[:80]
@@ -190,6 +193,7 @@ def getGitHistory(fullCatalog):
                     filesList[thisFile] = {"all_commits":[]}
                 filesList[thisFile]['all_commits'].append({
                     "hash": hash,
+                    "originURL": commitBaseURL + hash,
                     "abbrevHash": abbrevHash,
                     "subject": subject.rstrip("\n"),
                     "authorName": authorName,
