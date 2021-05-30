@@ -9,10 +9,12 @@ import argparse
 
 parser = argparse.ArgumentParser(description='Serve editable data catalog for dbt_')
 parser.add_argument('dbtpath', help='../absolute/or/relative/path/to/dbt/project/folder/')
+parser.add_argument('--skipcompile', action="store_true", help='Skip DBT Docs Compile')
 
 args = parser.parse_args()
 
 dbtpath = args.dbtpath
+skipDBTCompile = args.skipcompile
 app = Flask("__main__", template_folder='./build/', static_folder='./build/static/')
 socketio = SocketIO(app)
 
@@ -51,5 +53,6 @@ def reload_dbt():
 if __name__ == '__main__':
     if os.environ.get("WERKZEUG_RUN_MAIN") != "true": #On first run - debug mode triggers reruns if this isn't here
         tangata_api.setDBTPath(dbtpath)
+        tangata_api.setSkipDBTCompile(skipDBTCompile)
         tangata_api.reload_dbt(sendToast)
-    socketio.run(app, port=8080, debug=True)
+    socketio.run(app, port=8080) #, debug=True)

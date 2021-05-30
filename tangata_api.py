@@ -18,10 +18,14 @@ class CustomDumper(Dumper):
 CustomDumper.add_representer(dict, CustomDumper.represent_dict_preserve_order)
 
 dbtpath = ''
+skipDBTCompile = False
 
 def setDBTPath(newDBTPath):
     global dbtpath
     dbtpath = newDBTPath
+def setSkipDBTCompile(newSkipDBTCompile):
+    global skipDBTCompile
+    skipDBTCompile = newSkipDBTCompile
 
 catalogPath = "./tangata_catalog.json"
 catalogIndexPath = "./tangata_catalog_index.json"
@@ -321,9 +325,11 @@ def update_metadata(jsonBody):
     return "success"
 
 def reload_dbt(sendToast):
-    print("reloading dbt_...")
-    dbtRunner = os.system("cd "+dbtpath) #TODO: swap these lines back
-    # dbtRunner = os.system("cd "+dbtpath+" && dbt deps && dbt docs generate --profiles-dir ../")
+    if skipDBTCompile:
+        dbtRunner = os.system("cd "+dbtpath) #TODO: swap these lines back
+    else:
+        print("reloading dbt_...")
+        dbtRunner = os.system("cd "+dbtpath+" && dbt deps && dbt docs generate")
     print("complete")
     print(dbtRunner)
     if dbtRunner == 0 :

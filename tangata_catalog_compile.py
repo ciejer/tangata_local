@@ -181,6 +181,8 @@ def getGitHistory(fullCatalog):
                 authorName = lineTabs[6]
                 authorDate = datetime.fromtimestamp(int(lineTabs[5]))
                 authorDateRel = prettyRelativeDate(authorDate)+' ago'
+                if len(authorDateRel) < 5:
+                    authorDateRel = "Today"
                 print(authorDate)
             elif len(lineTabs) == 3:
                 thisFile = lineTabs[2].rstrip("\n").replace("/","\\")
@@ -198,9 +200,9 @@ def getGitHistory(fullCatalog):
             all_contributors = []
             for thisCommit in filesList[thisFile]['all_commits']:
                 all_contributors.append(thisCommit['authorName'])
-            filesList[thisFile]['created_by'] = filesList[thisFile]['all_commits'][0]['authorName']
-            filesList[thisFile]['created_date'] = filesList[thisFile]['all_commits'][0]['authorDate']
-            filesList[thisFile]['created_relative_date'] = filesList[thisFile]['all_commits'][0]['authorDateRel']
+            filesList[thisFile]['created_by'] = filesList[thisFile]['all_commits'][-1]['authorName']
+            filesList[thisFile]['created_date'] = filesList[thisFile]['all_commits'][-1]['authorDate']
+            filesList[thisFile]['created_relative_date'] = filesList[thisFile]['all_commits'][-1]['authorDateRel']
             filesList[thisFile]['all_contributors'] = list(dict.fromkeys(all_contributors))
         return filesList
 
