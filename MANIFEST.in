@@ -1,0 +1,3 @@
+graft tangata/templates
+graft tangata/static
+global-exclude *.pyc

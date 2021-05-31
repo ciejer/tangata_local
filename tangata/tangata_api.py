@@ -6,7 +6,7 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 import re
-import tangata_catalog_compile
+from tangata import tangata_catalog_compile
 
 class CustomDumper(Dumper):
     #Super neat hack to preserve the mapping key order. See https://stackoverflow.com/a/52621703/1497385
