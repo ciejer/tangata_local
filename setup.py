@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='tangata',
-    url='tangata.chrisjenkins.nz',
+    url='http://tangata.chrisjenkins.nz',
     author="Chris Jenkins",
     author_email='chris@chrisjenkins.nz',
     version='0.0.1',
