@@ -79,6 +79,10 @@ def searchModels(searchString):
             results = json.dumps(matches)
             # print(json.dumps(matches))
             return '{"results": ' + results + ',"searchString":"' + searchString + '"}'
+        else:
+            return '{"results": [],"searchString":"' + searchString + '"}'
+    else:
+        return '{"results": [],"searchString":"' + searchString + '"}'
 
 def get_model(nodeID):
     result = catalog[nodeID]
@@ -86,14 +90,14 @@ def get_model(nodeID):
 
 def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, model_or_source):
     def useSchemaYML():
-        print("using useSchemaYML")
+        # using useSchemaYML
         def createNewYML(schemaPath, modelName, sourceSchema):
-            print("createNewYML")
+            # createNewYML
             if(model_or_source=='model'):
-                print("createNewYML - model")
+                # createNewYML - model
                 newYAML = {"version": 2,"models": [{"name": modelName}]}
             else:
-                print("createNewYML - source")
+                # createNewYML - source
                 newYAML = {"version": 2,"sources": [{"name": source_schema,"tables": [{"name": modelName}]}]}
             yamlToWrite = dump(newYAML, Dumper=CustomDumper)
             print(yamlToWrite)
@@ -103,42 +107,43 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
         path = dbtpath + model_path.replace('\\','/')
         print(path)
         print(path.rindex('/'))
-        print(path[0,path.rindex('/')])
-        path = path[0,path.rindex('/')]
+        print(path[0:path.rindex('/')])
+        path = path[0:path.rindex('/')]
         directory = os.path.dirname(path)
         if not os.path.exists(directory):
-            print("useSchemaYML - directory doesn't exist")
+            # useSchemaYML - directory doesn't exist
             os.makedirs(directory)
         schemaPath = path+'/schema.yml'
         try:
             if os.path.isfile(schemaPath):
-                print("useSchemaYML - schemaPath exists")
+                # useSchemaYML - schemaPath exists
                 schemaPathRead = open(schemaPath, "r")
                 currentSchemaYML = load(schemaPathRead, Loader=Loader)
                 schemaPathRead.close()
                 if model_or_source == 'model':
-                    print("useSchemaYML - is model")
+                    # useSchemaYML - is model
                     if len(list(filter(lambda d: d['name'] == model_name, currentSchemaYML['models']))) > 0:
-                        print("useSchemaYML - found model in file")
+                        # useSchemaYML - found model in file
                         return schemaPath
                     else:
                         print('useSchemaYML - pushing model')
                         currentSchemaYML['models'].append({"name": model_name})
                         schemaPathWrite = open(schemaPath, "w")
-                        schemaPathWrite.write(dump(currentSchemaYML), Dumper=CustomDumper)
+                        schemaPathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
                         schemaPathWrite.close()
+                        print('useSchemaYML - pushed model')
                 else:
-                    print("useSchemaYML - source")
+                    # useSchemaYML - source
                     if len(list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))) > 0 and len(list(filter(lambda d: d['name'] == model_name, list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))[0]['tables']))) > 0:
-                        print("useSchemaYML - found source in file")
+                        # useSchemaYML - found source in file
                         return schemaPath
                     else:
-                        print("useSchemaYML - did not find source in file")
+                        # useSchemaYML - did not find source in file
                         if len(list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))) == 0: #add source and table
-                            print("pushing source and table")
+                            # pushing source and table
                             currentSchemaYML['sources'].append({"name": source_schema,"tables": [{"name": model_name}]})
                         else: #add just source table
-                            print("pushing just table")
+                            # pushing just table
                             list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))['tables'].append({"name": model_name})
                         schemaPathWrite = open(schemaPath, "w")
                         schemaPathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
@@ -151,26 +156,26 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
     print(source_schema)
     print(model_name)
     if model_or_source == 'source':
-        print("is source")
+        # is source
         path = dbtpath + model_path.replace('\\','/')
         print(path)
         try:
             if os.path.isfile(path):
-                print("first try path is file")
+                # first try path is file
                 pathRead = open(path, "r")
                 currentSchemaYML = load(pathRead, Loader=Loader)
                 pathRead.close()
-                print("opened yaml")
+                # opened yaml
                 if len(list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))) > 0 and len(list(filter(lambda d: d['name'] == model_name, list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))[0]['tables']))) > 0:
-                    print("found source on first try")
+                    # found source on first try
                     return path
                 else:
-                    print("did not source on first try")
+                    # did not source on first try
                     if len(list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))) == 0: #add source and table
-                        print("pushing source and table")
+                        # pushing source and table
                         currentSchemaYML['sources'].append({"name": source_schema,"tables": [{"name": model_name}]})
                     else: #add just source table
-                        print("pushing just table")
+                        # pushing just table
                         list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))['tables'].append({"name": model_name})
                     pathWrite = open(path, "w")
                     pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
@@ -180,7 +185,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                 return useSchemaYML()
         except:
             return useSchemaYML()
-    elif len(yaml_path) > 0:
+    elif yaml_path is not None and len(yaml_path) > 0:
         path = dbtpath + yaml_path.replace('\\','/')
         try:
             if os.path.isfile(path):
@@ -188,7 +193,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                 currentSchemaYML = load(pathRead, Loader=Loader)
                 pathRead.close()
                 if len(list(filter(lambda d: d['name'] == model_name, currentSchemaYML['models']))) > 0:
-                    print("found model in file")
+                    # found model in file
                     return path
                 else:
                     print('pushing model')
@@ -287,9 +292,9 @@ def update_metadata(jsonBody):
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], currentSchemaYML['models']))[0]
         else:
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], list(filter(lambda d: d['name'] == jsonBody['node_id'].split(".")[2], currentSchemaYML['sources']))[0]['tables']))[0]
-        print("about to check for columns")
+        # about to check for columns
         if 'columns' in currentSchemaYMLModel.keys():
-            print("columns exist")
+            # columns exist
             if len(list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))) == 0:
                 currentSchemaYMLModel['columns'].append({"name": jsonBody['column']})
             currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]

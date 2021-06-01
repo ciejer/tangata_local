@@ -20,7 +20,7 @@ def tangata():
 
     from tangata import tangata_api
     def sendToast (message, type):
-        print("Attempting Send Toast")
+        # Attempting Send Toast
         socketio.emit('toast', {"message": message, "type": type})
 
     @app.route("/")
@@ -29,25 +29,25 @@ def tangata():
 
     @app.route("/api/v1/model_search/<searchString>")
     def serve_search(searchString):
-        print("search received")
+        # search received
         tangata_api.setDBTPath(dbtpath)
         return tangata_api.searchModels(searchString)
 
     @app.route("/api/v1/models/<nodeID>")
     def get_model(nodeID):
-        print("get model")
+        # get model
         tangata_api.setDBTPath(dbtpath)
         return tangata_api.get_model(nodeID)
 
     @app.route("/api/v1/update_metadata", methods=['POST'])
     def update_metadata():
-        print("post metadata update")
+        # post metadata update
         tangata_api.setDBTPath(dbtpath)
         return tangata_api.update_metadata(request.json)
 
     @app.route("/api/v1/reload_dbt", methods=['POST'])
     def reload_dbt():
-        print("post reload dbt")
+        # post reload dbt
         tangata_api.setDBTPath(dbtpath)
         return tangata_api.reload_dbt(sendToast)
         
