@@ -29,26 +29,12 @@ def setSkipDBTCompile(newSkipDBTCompile):
 
 catalogPath = "./tangata_catalog.json"
 catalogIndexPath = "./tangata_catalog_index.json"
-
-def catalogIndex():
-    try:
-        f = open(catalogIndexPath) #change these to use catalogIndexPath once python-generated indexes are good
-        return json.load(f)
-    except IOError:
-        print("catalogindex.json not accessible")
-    finally:
-        f.close()
-
-def catalog():
-    try:
-        f = open(catalogPath)
-        return json.load(f)
-    except IOError:
-        print("catalog.json not accessible")
-    finally:
-        f.close()
+catalog = {}
+catalogIndex = []
 
 def refreshMetadata(sendToast):
+    global catalog
+    global catalogIndex
     print("Refreshing DBT Catalog...")
     if not os.path.isfile(dbtpath + "target/catalog.json"):
         print("DBT generated docs not available..")
@@ -64,12 +50,8 @@ def refreshMetadata(sendToast):
     print("Assembling Git History...")
     tangata_catalog_compile.getGitHistory(assemblingFullCatalog)
     print("Storing Compiled Catalog...")
-    catalogWrite = open(catalogPath, "w")
-    json.dump(assemblingFullCatalog, catalogWrite)
-    catalogWrite.close()
-    catalogIndexWrite = open(catalogIndexPath, "w")
-    json.dump(assemblingCatalogIndex, catalogIndexWrite)
-    catalogIndexWrite.close()
+    catalog = assemblingFullCatalog
+    catalogIndex = assemblingCatalogIndex
     sendToast("Metadata has been refreshed successfully.", "success")
 
 
@@ -86,10 +68,8 @@ def searchModels(searchString):
         return (searchStringLengthDiff, isModel, hasDescription)
     if len(searchString)>3:
         print(searchString)
-        # print(type(catalogIndex()))
-        # print(catalogIndex()[0]['searchable'])
         denied_metrics = [re.compile(searchString), re.compile("c$")]
-        matches = [model for model in catalogIndex() 
+        matches = [model for model in catalogIndex
             if re.compile(searchString).search(model['searchable'])]
         if len(matches) > 0:
 
@@ -101,7 +81,7 @@ def searchModels(searchString):
             return '{"results": ' + results + ',"searchString":"' + searchString + '"}'
 
 def get_model(nodeID):
-    result = catalog()[nodeID]
+    result = catalog[nodeID]
     return result
 
 def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, model_or_source):

@@ -23,9 +23,6 @@ def setDBTPath(newDBTPath):
     global dbtpath
     dbtpath = newDBTPath
 
-catalogPath = "./tangata_catalog.json"
-catalogIndexPath = "./tangata_catalog_index.json"
-
 def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
     catalogNode = catalog[nodeOrSource+"s"][node['unique_id']]
     manifestNode = manifest[nodeOrSource+"s"][node['unique_id']]
@@ -163,6 +160,7 @@ def getGitHistory(fullCatalog):
         commitBaseURL = repo.remotes.origin.url.replace(".git","") + "/commits/"
         if "@" in commitBaseURL:
             commitBaseURL = commitBaseURL.split("@")[1].replace(":","/")
+        commitBaseURL = "http://" + commitBaseURL
         git_bin = repo.git
         git_log = git_bin.execute('git log --numstat --pretty=format:"\t\t\t%H\t%h\t%at\t%aN\t%s"')
         git_log[:80]
