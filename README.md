@@ -31,14 +31,12 @@ This approach may take some time, but not out of reach - SQL is structured by de
 
 ## Installation Instructions
 
-- Install dependencies:  
-`pip install Flask Flask-SocketIO PyYAML PyDriller python-dateutil simple-websocket`
-
-- Clone project to local folder
+`pip install tangata`
 
 ## To Serve Tāngata:
 
-- Run `./tangata <../../absolute/or/relative/path/to/dbt/folder/>`
+- Navigate to your dbt project folder
+- Run `./tangata [--skipcompile]`
 - Tangata will be served at http://localhost:8080
 
 ## Where's the React code?
