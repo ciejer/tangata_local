@@ -125,7 +125,7 @@ def getModelLineage(fullCatalog):
                     if len([existingRow for existingRow in tempLineage if existingRow['id'] == currentRecursedModel['nodeID']+'_'+refValue]) == 0:
                         tempLineage.append({ "id": currentRecursedModel['nodeID']+"_"+refValue, "source": currentRecursedModel['nodeID'], "target": refValue, "animated": True })
                     if len([existingRow for existingRow in tempLineage if existingRow['id'] == refValue]) == 0:
-                        tempLineage.append({ "id": refValue, "data": { "label": refValue.split(".")[-1].replace('_', '_\u200B') }, "connectable": False})
+                        tempLineage.append({ "id": refValue, "data": { "label": refValue.split(".")[-1].replace('_', '_\u200B') }, "className": "lineage_"+refValue.split(".")[0]+"_node", "connectable": False})
                     recurseForwardLineage(fullCatalog[refValue])
         def recurseBackLineage(currentRecursedModel):
             if currentRecursedModel is not None and 'depends_on' in currentRecursedModel and currentRecursedModel['depends_on'] is not None and 'nodes' in currentRecursedModel['depends_on']:
@@ -133,13 +133,13 @@ def getModelLineage(fullCatalog):
                     if len([existingRow for existingRow in tempLineage if existingRow['id'] == currentRecursedModel['nodeID']+'_'+refValue]) == 0:
                         tempLineage.append({ "id": currentRecursedModel['nodeID']+"_"+refValue, "target": currentRecursedModel['nodeID'], "source": refValue, "animated": True })
                     if len([existingRow for existingRow in tempLineage if existingRow['id'] == refValue]) == 0:
-                        tempLineage.append({ "id": refValue, "data": { "label": refValue.split(".")[-1].replace('_', '_\u200B') }, "connectable": False})
+                        tempLineage.append({ "id": refValue, "data": { "label": refValue.split(".")[-1].replace('_', '_\u200B') }, "className": "lineage_"+refValue.split(".")[0]+"_node", "connectable": False})
                     if refValue in fullCatalog.keys():
                         recurseBackLineage(fullCatalog[refValue])
 
 
         recurseBackLineage(currentModel)
-        tempLineage.append({ "id": currentModel['nodeID'], "style": {"borderColor": "tomato","borderWidth": "2px"}, "connectable": False, "data": { "label": currentModel['name'].replace("_", '_\u200B') }})
+        tempLineage.append({ "id": currentModel['nodeID'], "style": {"borderColor": "tomato","borderWidth": "2px"}, "className": "lineage_"+currentModel['nodeID'].split(".")[0]+"_node", "connectable": False, "data": { "label": currentModel['name'].replace("_", '_\u200B') }})
         recurseForwardLineage(currentModel)
         return tempLineage
 
@@ -157,7 +157,7 @@ def getGitHistory(fullCatalog):
     def gitLog():
         filesList = {}
         repo = git.Repo(dbtpath)
-        commitBaseURL = repo.remotes.origin.url.replace(".git","") + "/commits/"
+        commitBaseURL = repo.remotes.origin.url.replace(".git","") + "/commit/"
         if "@" in commitBaseURL:
             commitBaseURL = commitBaseURL.split("@")[1].replace(":","/")
         commitBaseURL = "http://" + commitBaseURL
