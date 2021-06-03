@@ -50,6 +50,10 @@ def tangata():
         # post reload dbt
         tangata_api.setDBTPath(dbtpath)
         return tangata_api.reload_dbt(sendToast)
+
+    @app.route('/<path:path>')
+    def catch_all(path):
+        return render_template("index.html")
         
     if os.environ.get("WERKZEUG_RUN_MAIN") != "true": #On first run - debug mode triggers reruns if this isn't here
         tangata_api.setDBTPath(dbtpath)
