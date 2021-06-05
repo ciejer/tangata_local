@@ -307,6 +307,33 @@ def update_metadata(jsonBody):
         pathWrite = open(schemaYMLPath, "w")
         pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
         pathWrite.close()
+    elif jsonBody['updateMethod'] == 'yamlModelColumnTest':
+        schemaYMLPath = findOrCreateMetadataYML(jsonBody['yaml_path'], jsonBody['model_path'], jsonBody['model'], jsonBody['node_id'].split(".")[2], jsonBody['node_id'].split(".")[0])
+        schemaPathRead = open(schemaYMLPath, "r")
+        currentSchemaYML = load(schemaPathRead, Loader=Loader)
+        schemaPathRead.close()
+        if jsonBody['node_id'].split(".")[0] == 'model':
+            currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], currentSchemaYML['models']))[0]
+        else:
+            currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], list(filter(lambda d: d['name'] == jsonBody['node_id'].split(".")[2], currentSchemaYML['sources']))[0]['tables']))[0]
+        # about to check for columns
+        if 'columns' in currentSchemaYMLModel.keys():
+            # columns exist
+            if len(list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))) == 0:
+                currentSchemaYMLModel['columns'].append({"name": jsonBody['column']})
+            currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
+            print(currentSchemaYMLModelColumn)
+        else:
+            currentSchemaYMLModel['columns'] = {"name": jsonBody['column']}
+            currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
+        if len(jsonBody['new_value']) > 0:
+            currentSchemaYMLModelColumn['tests'] = jsonBody['new_value']
+        else:
+            del currentSchemaYMLModelColumn['tests']
+        print(currentSchemaYMLModel)
+        pathWrite = open(schemaYMLPath, "w")
+        pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
+        pathWrite.close()
     return "success"
 
 def reload_dbt(sendToast):
