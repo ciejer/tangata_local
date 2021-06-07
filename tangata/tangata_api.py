@@ -7,6 +7,11 @@ except ImportError:
     from yaml import Loader, Dumper
 import re
 from tangata import tangata_catalog_compile
+from functools import reduce
+from whoosh.index import create_in
+from whoosh.fields import *
+from whoosh.qparser import QueryParser, MultifieldParser
+from whoosh.filedb.filestore import RamStorage
 
 class CustomDumper(Dumper):
     #Super neat hack to preserve the mapping key order. See https://stackoverflow.com/a/52621703/1497385
@@ -83,6 +88,49 @@ def searchModels(searchString):
             return '{"results": [],"searchString":"' + searchString + '"}'
     else:
         return '{"results": [],"searchString":"' + searchString + '"}'
+
+def searchModels2(searchString):
+    if len(searchString)>3:
+        print(searchString)
+        schema = Schema(nodeID=ID(stored=True), name=ID(stored=True, field_boost=2.0), description=TEXT(stored=True, field_boost=1.0))
+        storage = RamStorage()
+        ix = storage.create_index(schema)
+        writer = ix.writer()
+        for doc in catalog.values():
+            print(doc["name"])
+            writer.add_document(nodeID=doc["nodeID"], name=doc["name"], description=doc["description"]) #TODO: add tags
+        writer.commit()
+        print(ix.doc_count())
+        with ix.searcher() as searcher:
+            query = MultifieldParser(["nodeID", "name","description"], schema=ix.schema)
+            print(query)
+            parsedquery = query.parse(searchString)
+            print(parsedquery)
+            print(list(searcher.lexicon("name")))
+            searchMatches = searcher.search(parsedquery)
+            print(searchMatches[0])
+            matches = [dict(hit) for hit in searchMatches]
+            print(matches)
+            foundModels = []
+            for thisMatch in matches:
+                foundModels.append({"nodeID": thisMatch['nodeID'], "modelName": catalog[thisMatch['nodeID']]['name'], "modelDescription": catalog[thisMatch['nodeID']]['description']}) #, "modelTags": fullCatalog(id)[searchResults[thisResult].ref].tags})
+            results = json.dumps(foundModels)
+            return '{"results": ' + results + ',"searchString":"' + searchString + '"}'
+    
+def get_model_tree():
+    def filter_model_name(indexRecord):
+        return indexRecord['type'] == "model_name"
+    def split_models(res, cur):
+        splitVal = reduce(lambda res, cur: {cur: res}, reversed(cur["nodeID"].split(".")), {})
+        res.append(splitVal)
+        return res
+    def merge_models(res, cur):
+        return merge(res, cur)
+
+    all_models = list(filter(filter_model_name, catalogIndex))
+    split_models = reduce(split_models, all_models, [])
+    resultObject = reduce(merge_models, split_models)
+    return resultObject
 
 def get_model(nodeID):
     result = catalog[nodeID]
@@ -212,6 +260,20 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
     else:
         return useSchemaYML()
 
+def merge(a, b, path=None):
+    if path is None: path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                merge(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass # same leaf value
+            else:
+                raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+        else:
+            a[key] = b[key]
+    return a
+
 def update_metadata(jsonBody):
     print(jsonBody)
     if jsonBody['updateMethod'] == 'yamlModelProperty':
@@ -253,19 +315,6 @@ def update_metadata(jsonBody):
             print(type(jsonToInsert))
             print(dbtProjectYML)
             print(type(dbtProjectYML))
-            def merge(a, b, path=None):
-                if path is None: path = []
-                for key in b:
-                    if key in a:
-                        if isinstance(a[key], dict) and isinstance(b[key], dict):
-                            merge(a[key], b[key], path + [str(key)])
-                        elif a[key] == b[key]:
-                            pass # same leaf value
-                        else:
-                            raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
-                    else:
-                        a[key] = b[key]
-                return a
             newDBTProjectYML = merge(dbtProjectYML, jsonToInsert)
             print(dbtProjectYML)
             

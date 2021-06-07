@@ -33,6 +33,17 @@ def tangata():
         tangata_api.setDBTPath(dbtpath)
         return tangata_api.searchModels(searchString)
 
+    @app.route("/api/v1/model_search2/<searchString>")
+    def serve_search2(searchString):
+        # search received
+        tangata_api.setDBTPath(dbtpath)
+        return tangata_api.searchModels2(searchString)
+
+    @app.route("/api/v1/model_tree")
+    def model_tree():
+        tangata_api.setDBTPath(dbtpath)
+        return tangata_api.get_model_tree()
+
     @app.route("/api/v1/models/<nodeID>")
     def get_model(nodeID):
         # get model
