@@ -5,8 +5,13 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 import git
-from datetime import datetime
+from datetime import datetime as dt
 from dateutil.relativedelta import relativedelta
+from whoosh.index import create_in
+from whoosh.fields import *
+from whoosh.qparser import QueryParser, MultifieldParser
+from whoosh.filedb.filestore import RamStorage
+from whoosh.analysis import StandardAnalyzer, NgramFilter
 
 class CustomDumper(Dumper):
     #Super neat hack to preserve the mapping key order. See https://stackoverflow.com/a/52621703/1497385
@@ -114,6 +119,30 @@ def compileSearchIndex(catalogToIndex):
                 tempCatalogIndex.append({"searchable": tagValue, "columnName": tagValue, "modelName": value['name'], "nodeID": value['nodeID'], "modelDescription": value['description'], "type": "tag_name"})
     return tempCatalogIndex
 
+def compileSearchIndex2(catalogToIndex):
+    ngram_analyzer = StandardAnalyzer() | NgramFilter(minsize=2, maxsize=4)
+    schema = Schema(
+        nodeID=ID(stored=True, analyzer=ngram_analyzer),
+        name=ID(stored=True, field_boost=2.0, analyzer=ngram_analyzer),
+        description=TEXT(stored=True, field_boost=1.0),
+        tag=KEYWORD(stored=True, commas=True),
+        column=KEYWORD(stored=True, commas=True)
+    )
+    storage = RamStorage()
+    ix = storage.create_index(schema)
+    writer = ix.writer()
+    for doc in catalogToIndex.values():
+        print(doc["name"])
+        writer.add_document(
+            nodeID=doc["nodeID"],
+            name=doc["name"],
+            description=doc["description"],
+            tag=",".join(doc["tags"]),
+            column=",".join(doc["columns"].keys())
+        )
+    writer.commit()
+    return ix
+
 
 def getModelLineage(fullCatalog):
 
@@ -149,7 +178,7 @@ def getModelLineage(fullCatalog):
 
 def getGitHistory(fullCatalog):
     def prettyRelativeDate(start_date):
-        rd = relativedelta(datetime.today(), start_date.replace(tzinfo=None))
+        rd = relativedelta(dt.today(), start_date.replace(tzinfo=None))
         years = f'{rd.years} years, ' if rd.years > 0 else ''
         months = f'{rd.months} months, ' if rd.months > 0 else ''
         days = f'{rd.days} days' if rd.days > 0 else ''
@@ -180,7 +209,7 @@ def getGitHistory(fullCatalog):
                 abbrevHash = lineTabs[4]
                 subject = lineTabs[7]
                 authorName = lineTabs[6]
-                authorDate = datetime.fromtimestamp(int(lineTabs[5]))
+                authorDate = dt.fromtimestamp(int(lineTabs[5]))
                 authorDateRel = prettyRelativeDate(authorDate)+' ago'
                 if len(authorDateRel) < 5:
                     authorDateRel = "Today"

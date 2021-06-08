@@ -27,13 +27,13 @@ def tangata():
     def home():
         return render_template("index.html")
 
-    @app.route("/api/v1/model_search/<searchString>")
-    def serve_search(searchString):
-        # search received
-        tangata_api.setDBTPath(dbtpath)
-        return tangata_api.searchModels(searchString)
+    # @app.route("/api/v1/model_search/<searchString>")
+    # def serve_search(searchString):
+    #     # search received
+    #     tangata_api.setDBTPath(dbtpath)
+    #     return tangata_api.searchModels(searchString)
 
-    @app.route("/api/v1/model_search2/<searchString>")
+    @app.route("/api/v1/model_search/<searchString>")
     def serve_search2(searchString):
         # search received
         tangata_api.setDBTPath(dbtpath)

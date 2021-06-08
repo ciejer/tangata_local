@@ -36,10 +36,12 @@ catalogPath = "./tangata_catalog.json"
 catalogIndexPath = "./tangata_catalog_index.json"
 catalog = {}
 catalogIndex = []
+catalogWhooshIndex = {}
 
 def refreshMetadata(sendToast):
     global catalog
     global catalogIndex
+    global catalogWhooshIndex
     print("Refreshing DBT Catalog...")
     if not os.path.isfile(dbtpath + "target/catalog.json"):
         print("DBT generated docs not available..")
@@ -50,6 +52,7 @@ def refreshMetadata(sendToast):
     assemblingFullCatalog = tangata_catalog_compile.compileCatalogNodes()
     print("Compiling Catalog Index...")
     assemblingCatalogIndex = tangata_catalog_compile.compileSearchIndex(assemblingFullCatalog)
+    catalogWhooshIndex = tangata_catalog_compile.compileSearchIndex2(assemblingFullCatalog)
     print("Assembling Lineage...")
     tangata_catalog_compile.getModelLineage(assemblingFullCatalog)
     print("Assembling Git History...")
@@ -90,32 +93,27 @@ def searchModels(searchString):
         return '{"results": [],"searchString":"' + searchString + '"}'
 
 def searchModels2(searchString):
-    if len(searchString)>3:
-        print(searchString)
-        schema = Schema(nodeID=ID(stored=True), name=ID(stored=True, field_boost=2.0), description=TEXT(stored=True, field_boost=1.0))
-        storage = RamStorage()
-        ix = storage.create_index(schema)
-        writer = ix.writer()
-        for doc in catalog.values():
-            print(doc["name"])
-            writer.add_document(nodeID=doc["nodeID"], name=doc["name"], description=doc["description"]) #TODO: add tags
-        writer.commit()
-        print(ix.doc_count())
-        with ix.searcher() as searcher:
-            query = MultifieldParser(["nodeID", "name","description"], schema=ix.schema)
-            print(query)
-            parsedquery = query.parse(searchString)
-            print(parsedquery)
-            print(list(searcher.lexicon("name")))
-            searchMatches = searcher.search(parsedquery)
-            print(searchMatches[0])
-            matches = [dict(hit) for hit in searchMatches]
-            print(matches)
-            foundModels = []
-            for thisMatch in matches:
-                foundModels.append({"nodeID": thisMatch['nodeID'], "modelName": catalog[thisMatch['nodeID']]['name'], "modelDescription": catalog[thisMatch['nodeID']]['description']}) #, "modelTags": fullCatalog(id)[searchResults[thisResult].ref].tags})
-            results = json.dumps(foundModels)
-            return '{"results": ' + results + ',"searchString":"' + searchString + '"}'
+    print(searchString)
+    with catalogWhooshIndex.searcher() as searcher:
+        query = MultifieldParser(["nodeID", "name","description","tag","column"], schema=catalogWhooshIndex.schema)
+        print(query)
+        parsedquery = query.parse(searchString)
+        print(parsedquery)
+        print(list(searcher.lexicon("column")))
+        searchMatches = searcher.search(parsedquery)
+        print(searchMatches[0])
+        matches = [dict(hit) for hit in searchMatches]
+        print(matches)
+        foundModels = []
+        for thisMatch in matches:
+            foundModels.append({
+                "nodeID": thisMatch['nodeID'],
+                "modelName": catalog[thisMatch['nodeID']]['name'],
+                "modelDescription": catalog[thisMatch['nodeID']]['description'],
+                "modelTags": catalog[thisMatch['nodeID']]['tags']
+            })
+        results = json.dumps(foundModels)
+        return '{"results": ' + results + ',"searchString":"' + searchString + '"}'
     
 def get_model_tree():
     def filter_model_name(indexRecord):
