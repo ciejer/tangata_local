@@ -19,7 +19,7 @@ setup(
         "Framework :: Flask",
         "Development Status :: 3 - Alpha",
     ],
-    version='0.1.4',
+    version='0.1.5',
     packages=find_packages(),
     entry_points={
         'console_scripts': ['tangata=tangata.tangata:tangata',
@@ -34,5 +34,6 @@ setup(
         'PyDriller',
         'python-dateutil',
         'simple-websocket',
+        'whoosh',
     ],
 )
