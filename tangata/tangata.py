@@ -44,6 +44,11 @@ def tangata():
         tangata_api.setDBTPath(dbtpath)
         return tangata_api.get_model_tree()
 
+    @app.route("/api/v1/db_tree")
+    def db_tree():
+        tangata_api.setDBTPath(dbtpath)
+        return tangata_api.get_db_tree()
+
     @app.route("/api/v1/models/<nodeID>")
     def get_model(nodeID):
         # get model

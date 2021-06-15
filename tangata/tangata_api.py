@@ -129,6 +129,22 @@ def get_model_tree():
     split_models = reduce(split_models, all_models, [])
     resultObject = reduce(merge_models, split_models)
     return resultObject
+    
+def get_db_tree():
+    def filter_model_name(indexRecord):
+        return indexRecord['type'] == "model_name"
+    def split_models(res, cur):
+        splitVal = reduce(lambda res, cur: {cur: res}, reversed(cur["nodeID"].split(".")), {})
+        res.append(splitVal)
+        return res
+    def merge_models(res, cur):
+        return merge(res, cur)
+
+    all_models = list(filter(filter_model_name, catalogIndex))
+    print(all_models)
+    split_models = reduce(split_models, all_models, [])
+    resultObject = reduce(merge_models, split_models)
+    return resultObject
 
 def get_model(nodeID):
     result = catalog[nodeID]
