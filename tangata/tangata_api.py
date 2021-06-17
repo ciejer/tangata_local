@@ -22,12 +22,8 @@ class CustomDumper(Dumper):
 
 CustomDumper.add_representer(dict, CustomDumper.represent_dict_preserve_order)
 
-dbtpath = ''
 skipDBTCompile = False
 
-def setDBTPath(newDBTPath):
-    global dbtpath
-    dbtpath = newDBTPath
 def setSkipDBTCompile(newSkipDBTCompile):
     global skipDBTCompile
     skipDBTCompile = newSkipDBTCompile
@@ -43,11 +39,10 @@ def refreshMetadata(sendToast):
     global catalogIndex
     global catalogWhooshIndex
     print("Refreshing DBT Catalog...")
-    if not os.path.isfile(dbtpath + "target/catalog.json"):
+    if not os.path.isfile("target/catalog.json"):
         print("DBT generated docs not available..")
         sendToast("catalog.json not found in folder.", "error")
         return
-    tangata_catalog_compile.setDBTPath(dbtpath)
     print("Compiling Catalog Nodes...")
     assemblingFullCatalog = tangata_catalog_compile.compileCatalogNodes()
     print("Compiling Catalog Index...")
@@ -127,24 +122,16 @@ def get_model_tree():
 
     all_models = list(filter(filter_model_name, catalogIndex))
     split_models = reduce(split_models, all_models, [])
-    resultObject = reduce(merge_models, split_models)
+    resultObject = reduce(merge_models, split_models, {})
     return resultObject
     
 def get_db_tree():
-    def filter_model_name(indexRecord):
-        return indexRecord['type'] == "model_name"
-    def split_models(res, cur):
-        splitVal = reduce(lambda res, cur: {cur: res}, reversed(cur["nodeID"].split(".")), {})
-        res.append(splitVal)
-        return res
-    def merge_models(res, cur):
-        return merge(res, cur)
+    def get_db_keys(item):
+        db_keys = ["database", "schema", "name", "nodeID"]
+        return {key: catalog[item][key] for key in db_keys}
 
-    all_models = list(filter(filter_model_name, catalogIndex))
-    print(all_models)
-    split_models = reduce(split_models, all_models, [])
-    resultObject = reduce(merge_models, split_models)
-    return resultObject
+    all_models = list(map(get_db_keys, catalog))
+    return {'db_models': all_models}
 
 def get_model(nodeID):
     result = catalog[nodeID]
@@ -166,7 +153,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
             newYamlWrite = open(schemaPath, "w")
             newYamlWrite.write(yamlToWrite)
             return schemaPath
-        path = dbtpath + model_path.replace('\\','/')
+        path = '' + model_path.replace('\\','/')
         print(path)
         print(path.rindex('/'))
         print(path[0:path.rindex('/')])
@@ -219,7 +206,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
     print(model_name)
     if model_or_source == 'source':
         # is source
-        path = dbtpath + model_path.replace('\\','/')
+        path = '' + model_path.replace('\\','/')
         print(path)
         try:
             if os.path.isfile(path):
@@ -248,7 +235,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
         except:
             return useSchemaYML()
     elif yaml_path is not None and len(yaml_path) > 0:
-        path = dbtpath + yaml_path.replace('\\','/')
+        path = '' + yaml_path.replace('\\','/')
         try:
             if os.path.isfile(path):
                 pathRead = open(path, "r")
@@ -313,7 +300,7 @@ def update_metadata(jsonBody):
             splitModelPath.pop(0)
             dbtProjectYMLModelPath = dbtProjectYMLModelPath + splitModelPath
             print(dbtProjectYMLModelPath)
-            readDbtProjectYml = open(dbtpath+"dbt_project.yml", "r")
+            readDbtProjectYml = open(''+"dbt_project.yml", "r")
             dbtProjectYML = load(readDbtProjectYml, Loader=Loader)
             readDbtProjectYml.close()
             jsonToInsert = ""
@@ -332,7 +319,7 @@ def update_metadata(jsonBody):
             newDBTProjectYML = merge(dbtProjectYML, jsonToInsert)
             print(dbtProjectYML)
             
-            writeDbtProjectYml = open(dbtpath+"dbt_project.yml", "w")
+            writeDbtProjectYml = open(''+"dbt_project.yml", "w")
             writeDbtProjectYml.write(dump(dbtProjectYML, Dumper=CustomDumper))
             writeDbtProjectYml.close()
 
@@ -400,17 +387,19 @@ def update_metadata(jsonBody):
     return "success"
 
 def reload_dbt(sendToast):
+    global skipDBTCompile
     if skipDBTCompile:
-        dbtRunner = os.system("cd "+dbtpath) #TODO: swap these lines back
+        print("Skipping DBT Compile.")
     else:
         print("reloading dbt_...")
-        dbtRunner = os.system("cd "+dbtpath+" && dbt deps && dbt docs generate")
-    print("complete")
-    print(dbtRunner)
-    if dbtRunner == 0 :
-        print("dbt_ update successful. Updating app catalog...")
-        refreshMetadata(sendToast)
-        sendToast("dbt_ update successful.", "success")
-    else:
-        print("dbt_ update failed.")
+        dbtRunner = os.system("dbt docs generate")
+        print("complete")
+        print(dbtRunner)
+        if dbtRunner == 0 :
+            print("dbt_ update successful. Updating app catalog...")
+            sendToast("dbt_ update successful.", "success")
+        else:
+            print("dbt_ update failed. Trying metadata compile anyway.")
+    refreshMetadata(sendToast)
+    skipDBTCompile = False #Set to allow compiles from button later
     return "success"

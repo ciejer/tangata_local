@@ -1,4 +1,5 @@
 import io
+import os
 from yaml import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -21,12 +22,6 @@ class CustomDumper(Dumper):
     #     return super(MyDumper, self).increase_indent(flow, False)    
 
 CustomDumper.add_representer(dict, CustomDumper.represent_dict_preserve_order)
-
-dbtpath = ''
-
-def setDBTPath(newDBTPath):
-    global dbtpath
-    dbtpath = newDBTPath
 
 def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
     catalogNode = catalog[nodeOrSource+"s"][node['unique_id']]
@@ -74,9 +69,9 @@ def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
 
 
 def compileCatalogNodes():
-    catalogJSONRead = open(dbtpath+"target/catalog.json", "r")
+    catalogJSONRead = open("target/catalog.json", "r")
     catalog = load(catalogJSONRead, Loader=Loader)
-    manifestJSONRead = open(dbtpath+"target/manifest.json", "r")
+    manifestJSONRead = open("target/manifest.json", "r")
     manifest = load(manifestJSONRead, Loader=Loader)
     tempCatalogNodes = {}
     for key in catalog['nodes'].keys():
@@ -185,13 +180,13 @@ def getGitHistory(fullCatalog):
         return f'{years}{months}{days}'
     def gitLog():
         filesList = {}
-        repo = git.Repo(dbtpath)
+        repo = git.Repo(os.getcwd())
         commitBaseURL = repo.remotes.origin.url.replace(".git","") + "/commit/"
         if "@" in commitBaseURL:
             commitBaseURL = commitBaseURL.split("@")[1].replace(":","/")
         commitBaseURL = "http://" + commitBaseURL
         git_bin = repo.git
-        git_log = git_bin.execute('git log --numstat --pretty=format:"\t\t\t%H\t%h\t%at\t%aN\t%s"')
+        git_log = git_bin.execute(['git', 'log', '--numstat', '--pretty=format:"\t\t\t%H\t%h\t%at\t%aN\t%s"'])
         git_log[:80]
         commits_raw = io.StringIO(git_log)
         hash = ''
@@ -204,7 +199,7 @@ def getGitHistory(fullCatalog):
             fullLine = commits_raw.readline()
             if fullLine == '': break
             lineTabs = fullLine.split("\t")
-            if lineTabs[0] == '' and lineTabs[1] == '':
+            if (lineTabs[0] == '' or lineTabs[0] == '"') and lineTabs[1] == '':
                 hash = lineTabs[3]
                 abbrevHash = lineTabs[4]
                 subject = lineTabs[7]

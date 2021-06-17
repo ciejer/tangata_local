@@ -11,7 +11,6 @@ parser.add_argument('--skipcompile', action="store_true", help='Skip DBT Docs Co
 
 args = parser.parse_args()
 
-dbtpath = ".\\"
 skipDBTCompile = args.skipcompile
 
 def tangata():
@@ -30,41 +29,34 @@ def tangata():
     # @app.route("/api/v1/model_search/<searchString>")
     # def serve_search(searchString):
     #     # search received
-    #     tangata_api.setDBTPath(dbtpath)
     #     return tangata_api.searchModels(searchString)
 
     @app.route("/api/v1/model_search/<searchString>")
     def serve_search2(searchString):
         # search received
-        tangata_api.setDBTPath(dbtpath)
         return tangata_api.searchModels2(searchString)
 
     @app.route("/api/v1/model_tree")
     def model_tree():
-        tangata_api.setDBTPath(dbtpath)
         return tangata_api.get_model_tree()
 
     @app.route("/api/v1/db_tree")
     def db_tree():
-        tangata_api.setDBTPath(dbtpath)
         return tangata_api.get_db_tree()
 
     @app.route("/api/v1/models/<nodeID>")
     def get_model(nodeID):
         # get model
-        tangata_api.setDBTPath(dbtpath)
         return tangata_api.get_model(nodeID)
 
     @app.route("/api/v1/update_metadata", methods=['POST'])
     def update_metadata():
         # post metadata update
-        tangata_api.setDBTPath(dbtpath)
         return tangata_api.update_metadata(request.json)
 
     @app.route("/api/v1/reload_dbt", methods=['POST'])
     def reload_dbt():
         # post reload dbt
-        tangata_api.setDBTPath(dbtpath)
         return tangata_api.reload_dbt(sendToast)
 
     @app.route('/<path:path>')
@@ -72,7 +64,7 @@ def tangata():
         return render_template("index.html")
         
     if os.environ.get("WERKZEUG_RUN_MAIN") != "true": #On first run - debug mode triggers reruns if this isn't here
-        tangata_api.setDBTPath(dbtpath)
         tangata_api.setSkipDBTCompile(skipDBTCompile)
         tangata_api.reload_dbt(sendToast)
+        print("Tāngata now served on http://localhost:8080")
     socketio.run(app, port=8080) #, debug=True)
