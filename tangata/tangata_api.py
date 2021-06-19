@@ -350,7 +350,10 @@ def update_metadata(jsonBody):
             currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
             print(currentSchemaYMLModelColumn)
         else:
-            currentSchemaYMLModel['columns'] = {"name": jsonBody['column']}
+            currentSchemaYMLModel['columns'] = [{"name": jsonBody['column']}]
+            print(currentSchemaYMLModel)
+            print(jsonBody['column'])
+            print(currentSchemaYMLModel['columns'])
             currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
         currentSchemaYMLModelColumn[jsonBody['property_name']] = jsonBody['new_value']
         print(currentSchemaYMLModel)
