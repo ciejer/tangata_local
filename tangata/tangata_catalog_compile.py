@@ -1,5 +1,7 @@
 import io
 import os
+import hashlib
+import json
 from yaml import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -170,6 +172,25 @@ def getModelLineage(fullCatalog):
     for catalogNode in fullCatalog.values():
         if catalogNode['model_type'] in ['node', 'source']:
             catalogNode['lineage'] = modelLineage(catalogNode)
+
+def checkGitChanges():
+
+    def md5(fname):
+        hash_md5 = hashlib.md5()
+        with open(fname, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
+
+    repo = git.Repo(os.getcwd())
+    currentDiff = repo.index.diff(None)
+    changedFiles = []
+    for thisItem in currentDiff:
+        changedFiles.append({"path": thisItem.a_path, "hash": str(md5(thisItem.a_path))})
+    for thisItem in repo.untracked_files:
+        changedFiles.append({"path": thisItem, "hash": str(md5(thisItem))})
+    # print(changedFiles)
+    return changedFiles
 
 def getGitHistory(fullCatalog):
     def prettyRelativeDate(start_date):

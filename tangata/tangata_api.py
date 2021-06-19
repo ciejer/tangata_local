@@ -1,5 +1,6 @@
 import os
 import json
+from git import refresh
 from yaml import load, dump
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -23,10 +24,16 @@ class CustomDumper(Dumper):
 CustomDumper.add_representer(dict, CustomDumper.represent_dict_preserve_order)
 
 skipDBTCompile = False
+disableRecompile = False
+lastGitIndex = {}
 
 def setSkipDBTCompile(newSkipDBTCompile):
     global skipDBTCompile
     skipDBTCompile = newSkipDBTCompile
+
+def setDisableRecompile(newDisableRecompile):
+    global disableRecompile
+    disableRecompile = newDisableRecompile
 
 catalogPath = "./tangata_catalog.json"
 catalogIndexPath = "./tangata_catalog_index.json"
@@ -88,25 +95,20 @@ def searchModels(searchString):
         return '{"results": [],"searchString":"' + searchString + '"}'
 
 def searchModels2(searchString):
-    print(searchString)
     with catalogWhooshIndex.searcher() as searcher:
         query = MultifieldParser(["nodeID", "name","description","tag","column"], schema=catalogWhooshIndex.schema)
-        print(query)
         parsedquery = query.parse(searchString)
-        print(parsedquery)
-        print(list(searcher.lexicon("column")))
         searchMatches = searcher.search(parsedquery)
-        print(searchMatches[0])
         matches = [dict(hit) for hit in searchMatches]
-        print(matches)
         foundModels = []
-        for thisMatch in matches:
-            foundModels.append({
-                "nodeID": thisMatch['nodeID'],
-                "modelName": catalog[thisMatch['nodeID']]['name'],
-                "modelDescription": catalog[thisMatch['nodeID']]['description'],
-                "modelTags": catalog[thisMatch['nodeID']]['tags']
-            })
+        if len(matches) > 0:
+            for thisMatch in matches:
+                foundModels.append({
+                    "nodeID": thisMatch['nodeID'],
+                    "modelName": catalog[thisMatch['nodeID']]['name'],
+                    "modelDescription": catalog[thisMatch['nodeID']]['description'],
+                    "modelTags": catalog[thisMatch['nodeID']]['tags']
+                })
         results = json.dumps(foundModels)
         return '{"results": ' + results + ',"searchString":"' + searchString + '"}'
     
@@ -275,7 +277,7 @@ def merge(a, b, path=None):
             a[key] = b[key]
     return a
 
-def update_metadata(jsonBody):
+def update_metadata(jsonBody, sendToast):
     print(jsonBody)
     if jsonBody['updateMethod'] == 'yamlModelProperty':
         schemaYMLPath = findOrCreateMetadataYML(jsonBody['yaml_path'], jsonBody['model_path'], jsonBody['model'], jsonBody['node_id'].split(".")[2], jsonBody['node_id'].split(".")[0])
@@ -287,19 +289,15 @@ def update_metadata(jsonBody):
         else:
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], list(filter(lambda d: d['name'] == jsonBody['node_id'].split(".")[2], currentSchemaYML['sources']))[0]['tables']))[0]
         currentSchemaYMLModel[jsonBody['property_name']] = jsonBody['new_value']
-        print(currentSchemaYMLModel)
         pathWrite = open(schemaYMLPath, "w")
         pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
         pathWrite.close()
     elif jsonBody['updateMethod'] == 'yamlModelTags':
         if jsonBody['node_id'].split(".")[0] == 'model':
             dbtProjectYMLModelPath = ['models', jsonBody['node_id'].split(".")[1]]
-            print(dbtProjectYMLModelPath)
             splitModelPath = jsonBody['model_path'].split(".")[0].split("\\")
-            print(splitModelPath)
             splitModelPath.pop(0)
             dbtProjectYMLModelPath = dbtProjectYMLModelPath + splitModelPath
-            print(dbtProjectYMLModelPath)
             readDbtProjectYml = open(''+"dbt_project.yml", "r")
             dbtProjectYML = load(readDbtProjectYml, Loader=Loader)
             readDbtProjectYml.close()
@@ -309,18 +307,10 @@ def update_metadata(jsonBody):
             jsonToInsert += "{\"tags\": [\""+"\",\"".join(jsonBody['new_value'])+"\"]}"
             for pathStep in dbtProjectYMLModelPath:
                 jsonToInsert += "}"
-            print(jsonToInsert)
-            print(type(jsonToInsert))
             jsonToInsert = json.loads(jsonToInsert)
-            print(jsonToInsert)
-            print(type(jsonToInsert))
-            print(dbtProjectYML)
-            print(type(dbtProjectYML))
             newDBTProjectYML = merge(dbtProjectYML, jsonToInsert)
-            print(dbtProjectYML)
-            
             writeDbtProjectYml = open(''+"dbt_project.yml", "w")
-            writeDbtProjectYml.write(dump(dbtProjectYML, Dumper=CustomDumper))
+            writeDbtProjectYml.write(dump(newDBTProjectYML, Dumper=CustomDumper))
             writeDbtProjectYml.close()
 
         else:
@@ -348,15 +338,10 @@ def update_metadata(jsonBody):
             if len(list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))) == 0:
                 currentSchemaYMLModel['columns'].append({"name": jsonBody['column']})
             currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
-            print(currentSchemaYMLModelColumn)
         else:
             currentSchemaYMLModel['columns'] = [{"name": jsonBody['column']}]
-            print(currentSchemaYMLModel)
-            print(jsonBody['column'])
-            print(currentSchemaYMLModel['columns'])
             currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
         currentSchemaYMLModelColumn[jsonBody['property_name']] = jsonBody['new_value']
-        print(currentSchemaYMLModel)
         pathWrite = open(schemaYMLPath, "w")
         pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
         pathWrite.close()
@@ -391,6 +376,7 @@ def update_metadata(jsonBody):
 
 def reload_dbt(sendToast):
     global skipDBTCompile
+    global lastGitIndex
     if skipDBTCompile:
         print("Skipping DBT Compile.")
     else:
@@ -405,4 +391,13 @@ def reload_dbt(sendToast):
             print("dbt_ update failed. Trying metadata compile anyway.")
     refreshMetadata(sendToast)
     skipDBTCompile = False #Set to allow compiles from button later
+    lastGitIndex = tangata_catalog_compile.checkGitChanges()
     return "success"
+
+def check_and_reload(sendToast):
+    global lastGitIndex
+    thisGitIndex = tangata_catalog_compile.checkGitChanges()
+    if thisGitIndex != lastGitIndex:
+        print("Repository changes found, running dbt")
+        lastGitIndex = thisGitIndex
+        reload_dbt(sendToast)
