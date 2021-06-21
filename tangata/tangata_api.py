@@ -1,11 +1,15 @@
 import os
 import json
 from git import refresh
-from yaml import load, dump
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
+# from yaml import load, dump
+# try:
+#     from yaml import CLoader as Loader, CDumper as Dumper
+# except ImportError:
+#     from yaml import Loader, Dumper
+from ruamel.yaml import YAML
+    # yaml = YAML()
+    # yaml.indent(mapping=2, sequence=4, offset=2)
+    # yaml.load(catalogJSONRead)
 import re
 from tangata import tangata_catalog_compile
 from functools import reduce
@@ -14,14 +18,14 @@ from whoosh.fields import *
 from whoosh.qparser import QueryParser, MultifieldParser
 from whoosh.filedb.filestore import RamStorage
 
-class CustomDumper(Dumper):
-    #Super neat hack to preserve the mapping key order. See https://stackoverflow.com/a/52621703/1497385
-    def represent_dict_preserve_order(self, data):
-        return self.represent_dict(data.items())
-    # def increase_indent(self, flow=False, indentless=False):
-    #     return super(MyDumper, self).increase_indent(flow, False)    
+# class CustomDumper(Dumper):
+#     #Super neat hack to preserve the mapping key order. See https://stackoverflow.com/a/52621703/1497385
+#     def represent_dict_preserve_order(self, data):
+#         return self.represent_dict(data.items())
+#     # def increase_indent(self, flow=False, indentless=False):
+#     #     return super(MyDumper, self).increase_indent(flow, False)    
 
-CustomDumper.add_representer(dict, CustomDumper.represent_dict_preserve_order)
+# CustomDumper.add_representer(dict, CustomDumper.represent_dict_preserve_order)
 
 skipDBTCompile = False
 disableRecompile = False
@@ -150,10 +154,10 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
             else:
                 # createNewYML - source
                 newYAML = {"version": 2,"sources": [{"name": source_schema,"tables": [{"name": modelName}]}]}
-            yamlToWrite = dump(newYAML, Dumper=CustomDumper)
-            print(yamlToWrite)
             newYamlWrite = open(schemaPath, "w")
-            newYamlWrite.write(yamlToWrite)
+            yaml = YAML()
+            yaml.indent(mapping=2, sequence=4, offset=2)
+            yaml.dump(newYAML, newYamlWrite)
             return schemaPath
         path = '' + model_path.replace('\\','/')
         print(path)
@@ -169,8 +173,9 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
             if os.path.isfile(schemaPath):
                 # useSchemaYML - schemaPath exists
                 schemaPathRead = open(schemaPath, "r")
-                currentSchemaYML = load(schemaPathRead, Loader=Loader)
-                schemaPathRead.close()
+                yaml = YAML()
+                yaml.indent(mapping=2, sequence=4, offset=2)
+                currentSchemaYML = yaml.load(schemaPathRead)
                 if model_or_source == 'model':
                     # useSchemaYML - is model
                     if len(list(filter(lambda d: d['name'] == model_name, currentSchemaYML['models']))) > 0:
@@ -180,7 +185,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                         print('useSchemaYML - pushing model')
                         currentSchemaYML['models'].append({"name": model_name})
                         schemaPathWrite = open(schemaPath, "w")
-                        schemaPathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
+                        yaml.dump(currentSchemaYML, schemaPathWrite)
                         schemaPathWrite.close()
                         print('useSchemaYML - pushed model')
                 else:
@@ -197,7 +202,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                             # pushing just table
                             list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))['tables'].append({"name": model_name})
                         schemaPathWrite = open(schemaPath, "w")
-                        schemaPathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
+                        yaml.dump(currentSchemaYML, schemaPathWrite)
                         schemaPathWrite.close()
                 return schemaPath
             else:
@@ -214,7 +219,9 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
             if os.path.isfile(path):
                 # first try path is file
                 pathRead = open(path, "r")
-                currentSchemaYML = load(pathRead, Loader=Loader)
+                yaml = YAML()
+                yaml.indent(mapping=2, sequence=4, offset=2)
+                currentSchemaYML = yaml.load(pathRead)
                 pathRead.close()
                 # opened yaml
                 if len(list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))) > 0 and len(list(filter(lambda d: d['name'] == model_name, list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))[0]['tables']))) > 0:
@@ -229,7 +236,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                         # pushing just table
                         list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))['tables'].append({"name": model_name})
                     pathWrite = open(path, "w")
-                    pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
+                    yaml.dump(currentSchemaYML, pathWrite)
                     pathWrite.close()
                 return path
             else:
@@ -241,7 +248,9 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
         try:
             if os.path.isfile(path):
                 pathRead = open(path, "r")
-                currentSchemaYML = load(pathRead, Loader=Loader)
+                yaml = YAML()
+                yaml.indent(mapping=2, sequence=4, offset=2)
+                currentSchemaYML = yaml.load(pathRead)
                 pathRead.close()
                 if len(list(filter(lambda d: d['name'] == model_name, currentSchemaYML['models']))) > 0:
                     # found model in file
@@ -253,7 +262,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                     print('now pushed, list is now:')
                     print(currentSchemaYML)
                     pathWrite = open(path, "w")
-                    pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
+                    yaml.dump(currentSchemaYML, pathWrite)
                     pathWrite.close()
                 return path
             else:
@@ -282,7 +291,9 @@ def update_metadata(jsonBody, sendToast):
     if jsonBody['updateMethod'] == 'yamlModelProperty':
         schemaYMLPath = findOrCreateMetadataYML(jsonBody['yaml_path'], jsonBody['model_path'], jsonBody['model'], jsonBody['node_id'].split(".")[2], jsonBody['node_id'].split(".")[0])
         schemaPathRead = open(schemaYMLPath, "r")
-        currentSchemaYML = load(schemaPathRead, Loader=Loader)
+        yaml = YAML()
+        yaml.indent(mapping=2, sequence=4, offset=2)
+        currentSchemaYML = yaml.load(schemaPathRead)
         schemaPathRead.close()
         if jsonBody['node_id'].split(".")[0] == 'model':
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], currentSchemaYML['models']))[0]
@@ -290,7 +301,7 @@ def update_metadata(jsonBody, sendToast):
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], list(filter(lambda d: d['name'] == jsonBody['node_id'].split(".")[2], currentSchemaYML['sources']))[0]['tables']))[0]
         currentSchemaYMLModel[jsonBody['property_name']] = jsonBody['new_value']
         pathWrite = open(schemaYMLPath, "w")
-        pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
+        yaml.dump(currentSchemaYML, pathWrite)
         pathWrite.close()
     elif jsonBody['updateMethod'] == 'yamlModelTags':
         if jsonBody['node_id'].split(".")[0] == 'model':
@@ -299,34 +310,37 @@ def update_metadata(jsonBody, sendToast):
             splitModelPath.pop(0)
             dbtProjectYMLModelPath = dbtProjectYMLModelPath + splitModelPath
             readDbtProjectYml = open(''+"dbt_project.yml", "r")
-            dbtProjectYML = load(readDbtProjectYml, Loader=Loader)
+            yaml = YAML()
+            yaml.indent(mapping=2, sequence=4, offset=2)
+            dbtProjectYML = yaml.load(readDbtProjectYml)
             readDbtProjectYml.close()
-            jsonToInsert = ""
+            jsonTags = json.loads("[\""+"\",\"".join(jsonBody['new_value'])+"\"]")
+            yamlModel = dbtProjectYML
             for pathStep in dbtProjectYMLModelPath:
-                jsonToInsert += "{\"" + pathStep + "\": "
-            jsonToInsert += "{\"tags\": [\""+"\",\"".join(jsonBody['new_value'])+"\"]}"
-            for pathStep in dbtProjectYMLModelPath:
-                jsonToInsert += "}"
-            jsonToInsert = json.loads(jsonToInsert)
-            newDBTProjectYML = merge(dbtProjectYML, jsonToInsert)
-            writeDbtProjectYml = open(''+"dbt_project.yml", "w")
-            writeDbtProjectYml.write(dump(newDBTProjectYML, Dumper=CustomDumper))
+                yamlModel = yamlModel[pathStep]
+            yamlModel['tags'] = jsonTags
+            writeDbtProjectYml = open("dbt_project.yml", "w")
+            yaml.dump(dbtProjectYML, writeDbtProjectYml)
             writeDbtProjectYml.close()
 
         else:
             schemaYMLPath = findOrCreateMetadataYML(jsonBody['yaml_path'], jsonBody['model_path'], jsonBody['model'], jsonBody['node_id'].split(".")[2], jsonBody['node_id'].split(".")[0])
             schemaPathRead = open(schemaYMLPath, "r")
-            currentSchemaYML = load(schemaPathRead, Loader=Loader)
+            yaml = YAML()
+            yaml.indent(mapping=2, sequence=4, offset=2)
+            currentSchemaYML = yaml.load(schemaPathRead)
             schemaPathRead.close()
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], list(filter(lambda d: d['name'] == jsonBody['node_id'].split(".")[2], currentSchemaYML['sources']))[0]['tables']))[0]
             currentSchemaYMLModel['tags'] = jsonBody['new_value']
             pathWrite = open(schemaYMLPath, "w")
-            pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
+            yaml.dump(currentSchemaYML, pathWrite)
             pathWrite.close()
     elif jsonBody['updateMethod'] == 'yamlModelColumnProperty':
         schemaYMLPath = findOrCreateMetadataYML(jsonBody['yaml_path'], jsonBody['model_path'], jsonBody['model'], jsonBody['node_id'].split(".")[2], jsonBody['node_id'].split(".")[0])
         schemaPathRead = open(schemaYMLPath, "r")
-        currentSchemaYML = load(schemaPathRead, Loader=Loader)
+        yaml = YAML()
+        yaml.indent(mapping=2, sequence=4, offset=2)
+        currentSchemaYML = yaml.load(schemaPathRead)
         schemaPathRead.close()
         if jsonBody['node_id'].split(".")[0] == 'model':
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], currentSchemaYML['models']))[0]
@@ -343,12 +357,14 @@ def update_metadata(jsonBody, sendToast):
             currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
         currentSchemaYMLModelColumn[jsonBody['property_name']] = jsonBody['new_value']
         pathWrite = open(schemaYMLPath, "w")
-        pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
+        yaml.dump(currentSchemaYML, pathWrite)
         pathWrite.close()
     elif jsonBody['updateMethod'] == 'yamlModelColumnTest':
         schemaYMLPath = findOrCreateMetadataYML(jsonBody['yaml_path'], jsonBody['model_path'], jsonBody['model'], jsonBody['node_id'].split(".")[2], jsonBody['node_id'].split(".")[0])
         schemaPathRead = open(schemaYMLPath, "r")
-        currentSchemaYML = load(schemaPathRead, Loader=Loader)
+        yaml = YAML()
+        yaml.indent(mapping=2, sequence=4, offset=2)
+        currentSchemaYML = yaml.load(schemaPathRead)
         schemaPathRead.close()
         if jsonBody['node_id'].split(".")[0] == 'model':
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], currentSchemaYML['models']))[0]
@@ -370,7 +386,7 @@ def update_metadata(jsonBody, sendToast):
             del currentSchemaYMLModelColumn['tests']
         print(currentSchemaYMLModel)
         pathWrite = open(schemaYMLPath, "w")
-        pathWrite.write(dump(currentSchemaYML, Dumper=CustomDumper))
+        yaml.dump(currentSchemaYML, pathWrite)
         pathWrite.close()
     return "success"
 

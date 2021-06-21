@@ -2,11 +2,6 @@ import io
 import os
 import hashlib
 import json
-from yaml import load, dump
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
 import git
 from datetime import datetime as dt
 from dateutil.relativedelta import relativedelta
@@ -15,15 +10,6 @@ from whoosh.fields import *
 from whoosh.qparser import QueryParser, MultifieldParser
 from whoosh.filedb.filestore import RamStorage
 from whoosh.analysis import StandardAnalyzer, NgramFilter
-
-class CustomDumper(Dumper):
-    #Super neat hack to preserve the mapping key order. See https://stackoverflow.com/a/52621703/1497385
-    def represent_dict_preserve_order(self, data):
-        return self.represent_dict(data.items())
-    # def increase_indent(self, flow=False, indentless=False):
-    #     return super(MyDumper, self).increase_indent(flow, False)    
-
-CustomDumper.add_representer(dict, CustomDumper.represent_dict_preserve_order)
 
 def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
     catalogNode = catalog[nodeOrSource+"s"][node['unique_id']]
@@ -72,9 +58,9 @@ def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
 
 def compileCatalogNodes():
     catalogJSONRead = open("target/catalog.json", "r")
-    catalog = load(catalogJSONRead, Loader=Loader)
+    catalog = json.load(catalogJSONRead)
     manifestJSONRead = open("target/manifest.json", "r")
-    manifest = load(manifestJSONRead, Loader=Loader)
+    manifest = json.load(manifestJSONRead)
     tempCatalogNodes = {}
     for key in catalog['nodes'].keys():
         tempCatalogNodes[key] = populateFullCatalogNode(catalog['nodes'][key], "node", catalog, manifest)
