@@ -11,6 +11,12 @@ from whoosh.qparser import QueryParser, MultifieldParser
 from whoosh.filedb.filestore import RamStorage
 from whoosh.analysis import StandardAnalyzer, NgramFilter
 
+def replaceNoneHandler(data, replaceFrom, replaceTo):
+    if(data):
+        return data.replace(replaceFrom, replaceTo)
+    else:
+        return data
+
 def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
     catalogNode = catalog[nodeOrSource+"s"][node['unique_id']]
     manifestNode = manifest[nodeOrSource+"s"][node['unique_id']]
@@ -23,7 +29,7 @@ def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
         "schema": str.lower(manifestNode['schema']),
         "description": manifestNode['description'],
         "owner": catalogNode['metadata']['owner'],
-        "path": manifestNode['path'],
+        "path": replaceNoneHandler(manifestNode['path'], '\\', '/'),
         "enabled": manifestNode['config']['enabled'],
         "materialization": manifestNode['config']['materialized'] if 'config' in manifestNode.keys() and 'materialized' in manifestNode['config'].keys() else None,
         "post_hook": manifestNode['config']["post-hook"] if 'config' in manifestNode.keys() and 'post-hook' in manifestNode['config'].keys() else None,
@@ -36,8 +42,8 @@ def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
         "bytes_stored": catalogNode['stats']['bytes']['value'] if 'stats' in catalogNode.keys() and 'bytes' in catalogNode['stats'].keys() else None,
         "last_modified": catalogNode['stats']['last_modified']['value'] if 'stats' in catalogNode.keys() and 'last_modified' in catalogNode['stats'].keys() else None,
         "row_count": catalogNode['stats']['row_count']['value'] if 'stats' in catalogNode.keys() and 'row_count' in catalogNode['stats'].keys() else None,
-        "yaml_path": manifestNode['patch_path'],
-        "model_path": manifestNode['original_file_path'],
+        "yaml_path": replaceNoneHandler(manifestNode['patch_path'], '\\', '/'),
+        "model_path": replaceNoneHandler(manifestNode['original_file_path'], '\\', '/'),
         "columns": {},
         "referenced_by": [],
         "lineage": [],
@@ -217,14 +223,14 @@ def getGitHistory(fullCatalog):
                     authorDateRel = "Today"
                 print(authorDate)
             elif len(lineTabs) == 3:
-                thisFile = lineTabs[2].rstrip("\n").replace("/","\\")
+                thisFile = lineTabs[2].rstrip("\n")
                 if thisFile not in filesList:
                     filesList[thisFile] = {"all_commits":[]}
                 filesList[thisFile]['all_commits'].append({
                     "hash": hash,
                     "originURL": commitBaseURL + hash,
                     "abbrevHash": abbrevHash,
-                    "subject": subject.rstrip("\n"),
+                    "subject": subject.rstrip("\n\""),
                     "authorName": authorName,
                     "authorDateRel": authorDateRel,
                     "authorDate": authorDate.strftime("%Y-%m-%d %H:%M:%S %z")

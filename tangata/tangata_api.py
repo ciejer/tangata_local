@@ -159,7 +159,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
             yaml.indent(mapping=2, sequence=4, offset=2)
             yaml.dump(newYAML, newYamlWrite)
             return schemaPath
-        path = '' + model_path.replace('\\','/')
+        path = '' + model_path
         print(path)
         print(path.rindex('/'))
         print(path[0:path.rindex('/')])
@@ -213,7 +213,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
     print(model_name)
     if model_or_source == 'source':
         # is source
-        path = '' + model_path.replace('\\','/')
+        path = '' + model_path
         print(path)
         try:
             if os.path.isfile(path):
@@ -244,7 +244,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
         except:
             return useSchemaYML()
     elif yaml_path is not None and len(yaml_path) > 0:
-        path = '' + yaml_path.replace('\\','/')
+        path = '' + yaml_path
         try:
             if os.path.isfile(path):
                 pathRead = open(path, "r")
@@ -306,7 +306,7 @@ def update_metadata(jsonBody, sendToast):
     elif jsonBody['updateMethod'] == 'yamlModelTags':
         if jsonBody['node_id'].split(".")[0] == 'model':
             dbtProjectYMLModelPath = ['models', jsonBody['node_id'].split(".")[1]]
-            splitModelPath = jsonBody['model_path'].split(".")[0].split("\\")
+            splitModelPath = jsonBody['model_path'].split(".")[0].split("/")
             splitModelPath.pop(0)
             dbtProjectYMLModelPath = dbtProjectYMLModelPath + splitModelPath
             readDbtProjectYml = open(''+"dbt_project.yml", "r")
@@ -317,7 +317,10 @@ def update_metadata(jsonBody, sendToast):
             jsonTags = json.loads("[\""+"\",\"".join(jsonBody['new_value'])+"\"]")
             yamlModel = dbtProjectYML
             for pathStep in dbtProjectYMLModelPath:
+                if not pathStep in yamlModel:
+                    yamlModel[pathStep] = {'tags': []}
                 yamlModel = yamlModel[pathStep]
+
             yamlModel['tags'] = jsonTags
             writeDbtProjectYml = open("dbt_project.yml", "w")
             yaml.dump(dbtProjectYML, writeDbtProjectYml)
