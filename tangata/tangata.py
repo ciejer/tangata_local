@@ -70,13 +70,16 @@ def tangata():
     if os.environ.get("WERKZEUG_RUN_MAIN") != "true": #On first run - debug mode triggers reruns if this isn't here
         tangata_api.setSkipDBTCompile(skipDBTCompile)
         tangata_api.setDisableRecompile(disableRecompile)
-        tangata_api.reload_dbt(sendToast)
+        tangata_api.loadSave()
         print("Tāngata now served on http://localhost:8080")
         if disableRecompile == False:
             def run_check_and_reload():
                 tangata_api.check_and_reload(sendToast)
+            def run_first_load():
+                tangata_api.reload_dbt(sendToast)
             scheduler = BackgroundScheduler(standalone=True)
-            job = scheduler.add_job(run_check_and_reload, 'interval', minutes=5)
+            periodic_refresher = scheduler.add_job(run_check_and_reload, 'interval', minutes=5)
+            first_load = scheduler.add_job(run_first_load)
             try:
                 scheduler.start()
             except (KeyboardInterrupt):

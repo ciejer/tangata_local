@@ -45,6 +45,12 @@ catalog = {}
 catalogIndex = []
 catalogWhooshIndex = {}
 
+        with open("target/tangata_catalog.json", "r") as cat:
+            catalog = json.load(cat)
+        with open("target/tangata_catalog_index.json", "r") as catIndex:
+            catalogIndex = json.load(catIndex)
+
+
 def refreshMetadata(sendToast):
     global catalog
     global catalogIndex
@@ -67,6 +73,10 @@ def refreshMetadata(sendToast):
     catalog = assemblingFullCatalog
     catalogIndex = assemblingCatalogIndex
     sendToast("Metadata has been refreshed successfully.", "success")
+    with open("target/tangata_catalog.json", "w") as cat:
+        json.dump(catalog, cat)
+    with open("target/tangata_catalog_index.json", "w") as catIndex:
+        json.dump(catalogIndex, catIndex)
 
 
 def searchModels(searchString):
