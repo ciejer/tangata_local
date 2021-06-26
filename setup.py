@@ -19,7 +19,7 @@ setup(
         "Framework :: Flask",
         "Development Status :: 3 - Alpha",
     ],
-    version='0.1.13',
+    version='0.1.16',
     packages=find_packages(),
     entry_points={
         'console_scripts': ['tangata=tangata.tangata:tangata',
@@ -37,5 +37,6 @@ setup(
         'whoosh',
         'GitPython',
         'apscheduler',
+        'ruamel.yaml',
     ],
 )

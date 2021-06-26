@@ -5,11 +5,7 @@ from git import refresh
 # try:
 #     from yaml import CLoader as Loader, CDumper as Dumper
 # except ImportError:
-#     from yaml import Loader, Dumper
 from ruamel.yaml import YAML
-    # yaml = YAML()
-    # yaml.indent(mapping=2, sequence=4, offset=2)
-    # yaml.load(catalogJSONRead)
 import re
 from tangata import tangata_catalog_compile
 from functools import reduce
@@ -30,6 +26,7 @@ from whoosh.filedb.filestore import RamStorage
 skipDBTCompile = False
 disableRecompile = False
 lastGitIndex = {}
+tangataConfig = {}
 
 def setSkipDBTCompile(newSkipDBTCompile):
     global skipDBTCompile
@@ -39,12 +36,21 @@ def setDisableRecompile(newDisableRecompile):
     global disableRecompile
     disableRecompile = newDisableRecompile
 
+def setTangataConfig(newTangataConfig):
+    global tangataConfig
+    tangataConfig = newTangataConfig
+    tangata_catalog_compile.setTangataConfig(newTangataConfig)
+
 catalogPath = "./tangata_catalog.json"
 catalogIndexPath = "./tangata_catalog_index.json"
 catalog = {}
 catalogIndex = []
 catalogWhooshIndex = {}
 
+def loadSave():
+    global catalog
+    global catalogIndex
+    if os.path.exists("target/tangata_catalog.json") and os.path.exists("target/tangata_catalog_index.json"):
         with open("target/tangata_catalog.json", "r") as cat:
             catalog = json.load(cat)
         with open("target/tangata_catalog_index.json", "r") as catIndex:
@@ -121,7 +127,8 @@ def searchModels2(searchString):
                     "nodeID": thisMatch['nodeID'],
                     "modelName": catalog[thisMatch['nodeID']]['name'],
                     "modelDescription": catalog[thisMatch['nodeID']]['description'],
-                    "modelTags": catalog[thisMatch['nodeID']]['tags']
+                    "modelTags": catalog[thisMatch['nodeID']]['tags'],
+                    "promoteStatus": catalog[thisMatch['nodeID']]['promote_status']
                 })
         results = json.dumps(foundModels)
         return '{"results": ' + results + ',"searchString":"' + searchString + '"}'
@@ -143,7 +150,7 @@ def get_model_tree():
     
 def get_db_tree():
     def get_db_keys(item):
-        db_keys = ["database", "schema", "name", "nodeID"]
+        db_keys = ["database", "schema", "name", "nodeID", "promote_status"]
         return {key: catalog[item][key] for key in db_keys}
 
     all_models = list(map(get_db_keys, catalog))
@@ -170,15 +177,37 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
             yaml.dump(newYAML, newYamlWrite)
             return schemaPath
         path = '' + model_path
-        print(path)
-        print(path.rindex('/'))
-        print(path[0:path.rindex('/')])
         path = path[0:path.rindex('/')]
         directory = os.path.dirname(path)
         if not os.path.exists(directory):
             # useSchemaYML - directory doesn't exist
             os.makedirs(directory)
-        schemaPath = path+'/schema.yml'
+        print(path)
+        print(os.listdir(path))
+        ymlsInFolder = len([file for file in os.listdir(path) if (file.endswith(".yml") or file.endswith(".yaml")) and os.path.isfile(path+"/"+file)])
+        
+        def singleYMLName():
+            for file in os.listdir(path):
+                    if (file.endswith(".yml") or file.endswith(".yaml")):
+                        return path+"/"+file
+            return None
+
+        def filePerFolder(defaultName):
+            if ymlsInFolder == 1:
+                existingYMLFile = singleYMLName()
+                if existingYMLFile:
+                    return existingYMLFile
+            return path+'/'+defaultName+'.yml'
+        if tangataConfig["schema_file_settings"] == "file_per_folder__folder_name":
+            schemaPath = filePerFolder(path[path.rindex('/')+1:])
+        elif tangataConfig["schema_file_settings"] == "file_per_folder__schema_yml":
+            schemaPath = filePerFolder("schema")
+        elif tangataConfig["schema_file_settings"] == "file_per_model__model_name":
+            schemaPath = path+'/'+model_name+'.yml'
+        else:
+            print("Issue with tangata config. Please report bug with the below:")
+            print(tangataConfig)
+
         try:
             if os.path.isfile(schemaPath):
                 # useSchemaYML - schemaPath exists

@@ -11,6 +11,12 @@ from whoosh.qparser import QueryParser, MultifieldParser
 from whoosh.filedb.filestore import RamStorage
 from whoosh.analysis import StandardAnalyzer, NgramFilter
 
+tangataConfig = {}
+
+def setTangataConfig(newTangataConfig):
+    global tangataConfig
+    tangataConfig = newTangataConfig
+
 def replaceNoneHandler(data, replaceFrom, replaceTo):
     if(data):
         return data.replace(replaceFrom, replaceTo)
@@ -21,6 +27,16 @@ def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
     catalogNode = catalog[nodeOrSource+"s"][node['unique_id']]
     manifestNode = manifest[nodeOrSource+"s"][node['unique_id']]
     # print(catalogNode)
+    cleanedTags = manifestNode['tags']
+    if len(tangataConfig["promotion_tag"]) > 0 and tangataConfig["promotion_tag"] in manifestNode['tags']:
+        promoteStatus = 1
+        cleanedTags.remove(tangataConfig["promotion_tag"])
+    elif len(tangataConfig["demotion_tag"]) > 0 and tangataConfig["demotion_tag"] in manifestNode['tags']:
+        promoteStatus = -1
+        cleanedTags.remove(tangataConfig["demotion_tag"])
+    else:
+        promoteStatus = 0
+
     tempFullCatalogNode = {
         "name": str.lower(catalogNode['metadata']['name']),
         "nodeID": node['unique_id'],
@@ -34,7 +50,7 @@ def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
         "materialization": manifestNode['config']['materialized'] if 'config' in manifestNode.keys() and 'materialized' in manifestNode['config'].keys() else None,
         "post_hook": manifestNode['config']["post-hook"] if 'config' in manifestNode.keys() and 'post-hook' in manifestNode['config'].keys() else None,
         "pre_hook": manifestNode['config']["pre-hook"] if 'config' in manifestNode.keys() and 'pre-hook' in manifestNode['config'].keys() else None,
-        "tags": manifestNode['tags'],
+        "tags": cleanedTags,
         "depends_on": manifestNode['depends_on'] if 'depends_on' in manifestNode.keys() else None,
         "raw_sql": manifestNode['raw_sql'] if 'raw_sql' in manifestNode.keys() else None,
         "compiled_sql": manifestNode['compiled_sql'] if 'compiled_sql' in manifestNode.keys() else None,
@@ -48,7 +64,8 @@ def populateFullCatalogNode(node, nodeOrSource, catalog, manifest):
         "referenced_by": [],
         "lineage": [],
         "all_contributors": [],
-        "all_commits": []
+        "all_commits": [],
+        "promote_status": promoteStatus
     }
     for column in catalogNode['columns'].items():
         manifestColumnNode = manifestNode['columns'][column[0]] if column[0] in manifestNode['columns'] else None
@@ -178,9 +195,11 @@ def checkGitChanges():
     currentDiff = repo.index.diff(None)
     changedFiles = []
     for thisItem in currentDiff:
-        changedFiles.append({"path": thisItem.a_path, "hash": str(md5(thisItem.a_path))})
+        if os.path.exists(thisItem.a_path):
+            changedFiles.append({"path": thisItem.a_path, "hash": str(md5(thisItem.a_path))})
     for thisItem in repo.untracked_files:
-        changedFiles.append({"path": thisItem, "hash": str(md5(thisItem))})
+        if os.path.exists(thisItem):
+            changedFiles.append({"path": thisItem, "hash": str(md5(thisItem))})
     # print(changedFiles)
     return changedFiles
 
