@@ -1,10 +1,6 @@
 import os
 import json
 from git import refresh
-# from yaml import load, dump
-# try:
-#     from yaml import CLoader as Loader, CDumper as Dumper
-# except ImportError:
 from ruamel.yaml import YAML
 import re
 from tangata import tangata_catalog_compile
@@ -136,16 +132,31 @@ def searchModels2(searchString):
 def get_model_tree():
     def filter_model_name(indexRecord):
         return indexRecord['type'] == "model_name"
+    def filter_sources(indexRecord):
+        return indexRecord['nodeID'].startswith("source.")
+    def filter_models(indexRecord):
+        return indexRecord['nodeID'].startswith("model.")
     def split_models(res, cur):
-        splitVal = reduce(lambda res, cur: {cur: res}, reversed(cur["nodeID"].split(".")), {})
+        splitVal = reduce(lambda res, cur: {cur: res}, reversed(catalog[cur["nodeID"]]['model_path'].split(".")[0].split("/")), {"nodeID": cur["nodeID"], "promote_status": catalog[cur["nodeID"]]['promote_status']})
+        res.append(splitVal)
+        return res
+    def split_sources(res, cur):
+        splitList = cur["nodeID"].replace("source.","sources.").split(".")
+        del splitList[1]
+        splitVal = reduce(lambda res, cur: {cur: res}, reversed(splitList), {"nodeID": cur["nodeID"], "promote_status": catalog[cur["nodeID"]]['promote_status']})
         res.append(splitVal)
         return res
     def merge_models(res, cur):
         return merge(res, cur)
 
-    all_models = list(filter(filter_model_name, catalogIndex))
+    all_models = list(filter(filter_models, filter(filter_model_name, catalogIndex)))
+    all_sources = list(filter(filter_sources, filter(filter_model_name, catalogIndex)))
+
     split_models = reduce(split_models, all_models, [])
-    resultObject = reduce(merge_models, split_models, {})
+    split_sources = reduce(split_sources, all_sources, [])
+    mergedModels = reduce(merge_models, split_models, {})
+    mergedSources = reduce(merge_models, split_sources, {})
+    resultObject = merge(mergedModels, mergedSources)
     return resultObject
     
 def get_db_tree():
