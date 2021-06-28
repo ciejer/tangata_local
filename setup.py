@@ -19,7 +19,7 @@ setup(
         "Framework :: Flask",
         "Development Status :: 3 - Alpha",
     ],
-    version='0.1.17',
+    version='0.1.18',
     packages=find_packages(),
     entry_points={
         'console_scripts': ['tangata=tangata.tangata:tangata',

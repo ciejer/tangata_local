@@ -185,6 +185,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
             newYamlWrite = open(schemaPath, "w")
             yaml = YAML()
             yaml.indent(mapping=2, sequence=4, offset=2)
+            yaml.preserve_quotes = True
             yaml.dump(newYAML, newYamlWrite)
             return schemaPath
         path = '' + model_path
@@ -225,6 +226,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                 schemaPathRead = open(schemaPath, "r")
                 yaml = YAML()
                 yaml.indent(mapping=2, sequence=4, offset=2)
+                yaml.preserve_quotes = True
                 currentSchemaYML = yaml.load(schemaPathRead)
                 if model_or_source == 'model':
                     # useSchemaYML - is model
@@ -271,6 +273,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                 pathRead = open(path, "r")
                 yaml = YAML()
                 yaml.indent(mapping=2, sequence=4, offset=2)
+                yaml.preserve_quotes = True
                 currentSchemaYML = yaml.load(pathRead)
                 pathRead.close()
                 # opened yaml
@@ -300,6 +303,7 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                 pathRead = open(path, "r")
                 yaml = YAML()
                 yaml.indent(mapping=2, sequence=4, offset=2)
+                yaml.preserve_quotes = True
                 currentSchemaYML = yaml.load(pathRead)
                 pathRead.close()
                 if len(list(filter(lambda d: d['name'] == model_name, currentSchemaYML['models']))) > 0:
@@ -343,6 +347,7 @@ def update_metadata(jsonBody, sendToast):
         schemaPathRead = open(schemaYMLPath, "r")
         yaml = YAML()
         yaml.indent(mapping=2, sequence=4, offset=2)
+        yaml.preserve_quotes = True
         currentSchemaYML = yaml.load(schemaPathRead)
         schemaPathRead.close()
         if jsonBody['node_id'].split(".")[0] == 'model':
@@ -362,16 +367,28 @@ def update_metadata(jsonBody, sendToast):
             readDbtProjectYml = open(''+"dbt_project.yml", "r")
             yaml = YAML()
             yaml.indent(mapping=2, sequence=4, offset=2)
+            yaml.preserve_quotes = True
             dbtProjectYML = yaml.load(readDbtProjectYml)
             readDbtProjectYml.close()
             jsonTags = json.loads("[\""+"\",\"".join(jsonBody['new_value'])+"\"]")
             yamlModel = dbtProjectYML
             for pathStep in dbtProjectYMLModelPath:
                 if not pathStep in yamlModel:
-                    yamlModel[pathStep] = {'tags': []}
+                    if tangataConfig["use_plus_for_tags"] == "true":
+                        yamlModel[pathStep] = {'+tags': []}
+                    else:
+                        
+                        yamlModel[pathStep] = {'tags': []}
                 yamlModel = yamlModel[pathStep]
-
-            yamlModel['tags'] = jsonTags
+            
+            if 'tags' in yamlModel: #If tags key already exists in yml, don't force config choice
+                yamlModel['tags'] = jsonTags
+            elif '+tags' in yamlModel:
+                yamlModel['+tags'] = jsonTags
+            elif tangataConfig["use_plus_for_tags"] == "true": #If tags key does not exist in yml, force config choice
+                yamlModel['+tags'] = jsonTags
+            else:
+                yamlModel['tags'] = jsonTags
             writeDbtProjectYml = open("dbt_project.yml", "w")
             yaml.dump(dbtProjectYML, writeDbtProjectYml)
             writeDbtProjectYml.close()
@@ -381,6 +398,7 @@ def update_metadata(jsonBody, sendToast):
             schemaPathRead = open(schemaYMLPath, "r")
             yaml = YAML()
             yaml.indent(mapping=2, sequence=4, offset=2)
+            yaml.preserve_quotes = True
             currentSchemaYML = yaml.load(schemaPathRead)
             schemaPathRead.close()
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], list(filter(lambda d: d['name'] == jsonBody['node_id'].split(".")[2], currentSchemaYML['sources']))[0]['tables']))[0]
@@ -393,6 +411,7 @@ def update_metadata(jsonBody, sendToast):
         schemaPathRead = open(schemaYMLPath, "r")
         yaml = YAML()
         yaml.indent(mapping=2, sequence=4, offset=2)
+        yaml.preserve_quotes = True
         currentSchemaYML = yaml.load(schemaPathRead)
         schemaPathRead.close()
         if jsonBody['node_id'].split(".")[0] == 'model':
@@ -417,6 +436,7 @@ def update_metadata(jsonBody, sendToast):
         schemaPathRead = open(schemaYMLPath, "r")
         yaml = YAML()
         yaml.indent(mapping=2, sequence=4, offset=2)
+        yaml.preserve_quotes = True
         currentSchemaYML = yaml.load(schemaPathRead)
         schemaPathRead.close()
         if jsonBody['node_id'].split(".")[0] == 'model':

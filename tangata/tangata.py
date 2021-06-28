@@ -19,7 +19,8 @@ disableRecompile = args.disable_recompile
 tangataConfig = { #Default settings below
     "schema_file_settings": "file_per_folder__folder_name", #Other options: file_per_folder__schema_yml; file_per_model__model_name
     "promotion_tag": "promoted",
-    "demotion_tag": "demoted"
+    "demotion_tag": "demoted",
+    "use_plus_for_tags": "true"
     }
 
 def tangata():
@@ -77,6 +78,7 @@ def tangata():
         tangataConfig = request.json
         with open("tangata_config.json", "w") as tc:
             json.dump(request.json, tc)
+        tangata_api.setTangataConfig(tangataConfig)
         return "success"
     
     
@@ -92,9 +94,15 @@ def tangata():
         tangata_api.setSkipDBTCompile(skipDBTCompile)
         tangata_api.setDisableRecompile(disableRecompile)
         if os.path.exists("tangata_config.json"):
+            global tangataConfig
+            newTangataConfig = {}
             with open("tangata_config.json", "r") as tc:
-                global tangataConfig
-                tangataConfig = json.load(tc)
+                newTangataConfig = json.load(tc)
+                for key in newTangataConfig: # Append all keys; this ensures any new keys are added on upgrade
+                    tangataConfig[key] = newTangataConfig[key]
+            if tangataConfig != newTangataConfig:
+                with open("tangata_config.json", "w") as tc:
+                    json.dump(tangataConfig, tc)
         else:
             with open("tangata_config.json", "w") as tc:
                 json.dump(tangataConfig, tc)
