@@ -111,6 +111,22 @@ def searchModels(searchString):
         return '{"results": [],"searchString":"' + searchString + '"}'
 
 def searchModels2(searchString):
+    
+    if searchString == "promoted": #Return promoted records
+        def filter_promoted(indexRecord):
+            return catalog[indexRecord]['promote_status'] == 1
+        promotedModels = filter(filter_promoted, catalog)
+        promotedResponse = {"results": [], "searchString": "promoted"}
+        for promotedModel in promotedModels:
+            promotedResponse["results"].append({
+                    "nodeID": catalog[promotedModel]['nodeID'],
+                    "modelName": catalog[promotedModel]['name'],
+                    "modelDescription": catalog[promotedModel]['description'],
+                    "modelTags": catalog[promotedModel]['tags'],
+                    "promoteStatus": catalog[promotedModel]['promote_status']
+                })
+        return promotedResponse
+
     with catalogWhooshIndex.searcher() as searcher:
         query = MultifieldParser(["nodeID", "name","description","tag","column"], schema=catalogWhooshIndex.schema)
         parsedquery = query.parse(searchString)
