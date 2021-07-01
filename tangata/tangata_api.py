@@ -2,6 +2,7 @@ import os
 import json
 from git import refresh
 from ruamel.yaml import YAML
+from ruamel.yaml.comments import merge_attrib
 import re
 from tangata import tangata_catalog_compile
 from functools import reduce
@@ -93,7 +94,6 @@ def searchModels(searchString):
         # print((inputItem['searchable'], inputItem['type'], inputItem['modelName'], searchStringLengthDiff, isModel, hasDescription))
         return (searchStringLengthDiff, isModel, hasDescription)
     if len(searchString)>3:
-        print(searchString)
         denied_metrics = [re.compile(searchString), re.compile("c$")]
         matches = [model for model in catalogIndex
             if re.compile(searchString).search(model['searchable'])]
@@ -210,8 +210,6 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
         if not os.path.exists(directory):
             # useSchemaYML - directory doesn't exist
             os.makedirs(directory)
-        print(path)
-        print(os.listdir(path))
         ymlsInFolder = len([file for file in os.listdir(path) if (file.endswith(".yml") or file.endswith(".yaml")) and os.path.isfile(path+"/"+file)])
         
         def singleYMLName():
@@ -250,12 +248,12 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                         # useSchemaYML - found model in file
                         return schemaPath
                     else:
-                        print('useSchemaYML - pushing model')
                         currentSchemaYML['models'].append({"name": model_name})
+                        if(tangataConfig["order_schema_yml_by_name"] == 'true'):
+                            currentSchemaYML['models'] = sorted(currentSchemaYML['models'], key=lambda model: model['name'])
                         schemaPathWrite = open(schemaPath, "w")
                         yaml.dump(currentSchemaYML, schemaPathWrite)
                         schemaPathWrite.close()
-                        print('useSchemaYML - pushed model')
                 else:
                     # useSchemaYML - source
                     if len(list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))) > 0 and len(list(filter(lambda d: d['name'] == model_name, list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))[0]['tables']))) > 0:
@@ -269,6 +267,10 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                         else: #add just source table
                             # pushing just table
                             list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))['tables'].append({"name": model_name})
+                        if(tangataConfig["order_schema_yml_by_name"] == 'true'):
+                            currentSchemaYML['sources'] = sorted(currentSchemaYML['sources'], key=lambda model: model['name'])
+                            for thisSource in currentSchemaYML['sources']:
+                                thisSource['tables'] = sorted(thisSource['tables'], key=lambda model: model['name'])
                         schemaPathWrite = open(schemaPath, "w")
                         yaml.dump(currentSchemaYML, schemaPathWrite)
                         schemaPathWrite.close()
@@ -277,12 +279,9 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                 return createNewYML(schemaPath, model_name, source_schema)
         except:
             return createNewYML(schemaPath, model_name, source_schema)
-    print(source_schema)
-    print(model_name)
     if model_or_source == 'source':
         # is source
         path = '' + model_path
-        print(path)
         try:
             if os.path.isfile(path):
                 # first try path is file
@@ -304,6 +303,10 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                     else: #add just source table
                         # pushing just table
                         list(filter(lambda d: d['name'] == source_schema, currentSchemaYML['sources']))['tables'].append({"name": model_name})
+                    if(tangataConfig["order_schema_yml_by_name"] == 'true'):
+                        currentSchemaYML['sources'] = sorted(currentSchemaYML['sources'], key=lambda model: model['name'])
+                        for thisSource in currentSchemaYML['sources']:
+                            thisSource['tables'] = sorted(thisSource['tables'], key=lambda model: model['name'])
                     pathWrite = open(path, "w")
                     yaml.dump(currentSchemaYML, pathWrite)
                     pathWrite.close()
@@ -326,11 +329,9 @@ def findOrCreateMetadataYML(yaml_path, model_path, model_name, source_schema, mo
                     # found model in file
                     return path
                 else:
-                    print('pushing model')
-                    print(currentSchemaYML)
                     currentSchemaYML['models'].append({"name": model_name})
-                    print('now pushed, list is now:')
-                    print(currentSchemaYML)
+                    if(tangataConfig["order_schema_yml_by_name"] == 'true'):
+                        currentSchemaYML['models'] = sorted(currentSchemaYML['models'], key=lambda model: model['name'])
                     pathWrite = open(path, "w")
                     yaml.dump(currentSchemaYML, pathWrite)
                     pathWrite.close()
@@ -357,7 +358,6 @@ def merge(a, b, path=None):
     return a
 
 def update_metadata(jsonBody, sendToast):
-    print(jsonBody)
     if jsonBody['updateMethod'] == 'yamlModelProperty':
         schemaYMLPath = findOrCreateMetadataYML(jsonBody['yaml_path'], jsonBody['model_path'], jsonBody['model'], jsonBody['node_id'].split(".")[2], jsonBody['node_id'].split(".")[0])
         schemaPathRead = open(schemaYMLPath, "r")
@@ -371,6 +371,13 @@ def update_metadata(jsonBody, sendToast):
         else:
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], list(filter(lambda d: d['name'] == jsonBody['node_id'].split(".")[2], currentSchemaYML['sources']))[0]['tables']))[0]
         currentSchemaYMLModel[jsonBody['property_name']] = jsonBody['new_value']
+        if(tangataConfig["order_schema_yml_by_name"] == 'true'):
+            if jsonBody['node_id'].split(".")[0] == 'model':
+                currentSchemaYML['models'] = sorted(currentSchemaYML['models'], key=lambda model: model['name'])
+            else:
+                currentSchemaYML['sources'] = sorted(currentSchemaYML['sources'], key=lambda model: model['name'])
+                for thisSource in currentSchemaYML['sources']:
+                    thisSource['tables'] = sorted(thisSource['tables'], key=lambda model: model['name'])
         pathWrite = open(schemaYMLPath, "w")
         yaml.dump(currentSchemaYML, pathWrite)
         pathWrite.close()
@@ -405,6 +412,29 @@ def update_metadata(jsonBody, sendToast):
                 yamlModel['+tags'] = jsonTags
             else:
                 yamlModel['tags'] = jsonTags
+
+            def dbtProjectSortOrder(key):
+                if key.lstrip('+') in ['enabled', 'tags', 'pre-hook', 'post-hook', 'database', 'schema', 'alias', 'persist_docs', 'full_refresh', 'materialized', 'sql_header', 'partition_by', 'cluster_by', 'kms_key_name', 'labels', 'policy_tags', 'hours_to_expiration', 'grant_access_to', 'sort', 'dist', 'sort_type', 'bind', 'transient', 'query_tag', 'automatic_clustering', 'snowflake_warehouse', 'copy_grants', 'secure', 'file_format', 'location_root', 'buckets', 'incremental_strategy', 'unique_key', 'persist_docs']:
+                    return '0' + key # sort flags above models
+                else:
+                    return '1' + key
+            def recursive_sort_mappings(s, level=0):
+                if isinstance(s, list): 
+                    for elem in s:
+                        recursive_sort_mappings(elem, level=level+1)
+                    return 
+                if not isinstance(s, dict):
+                    return
+                merge = getattr(s, merge_attrib, [None])[0]
+                if merge is not None and merge[0] != 0:  # << not in first position, move it
+                    setattr(s, merge_attrib, [(0, merge[1])])
+
+                for key in sorted(s._ok, key=dbtProjectSortOrder): # _ok -> set of Own Keys, i.e. not merged in keys
+                    value = s[key]
+                    recursive_sort_mappings(value, level=level+1)
+                    s.move_to_end(key)
+
+            recursive_sort_mappings(dbtProjectYML['models'])
             writeDbtProjectYml = open("dbt_project.yml", "w")
             yaml.dump(dbtProjectYML, writeDbtProjectYml)
             writeDbtProjectYml.close()
@@ -419,6 +449,10 @@ def update_metadata(jsonBody, sendToast):
             schemaPathRead.close()
             currentSchemaYMLModel = list(filter(lambda d: d['name'] == jsonBody['model'], list(filter(lambda d: d['name'] == jsonBody['node_id'].split(".")[2], currentSchemaYML['sources']))[0]['tables']))[0]
             currentSchemaYMLModel['tags'] = jsonBody['new_value']
+            if(tangataConfig["order_schema_yml_by_name"] == 'true'):
+                currentSchemaYML['sources'] = sorted(currentSchemaYML['sources'], key=lambda model: model['name'])
+                for thisSource in currentSchemaYML['sources']:
+                    thisSource['tables'] = sorted(thisSource['tables'], key=lambda model: model['name'])
             pathWrite = open(schemaYMLPath, "w")
             yaml.dump(currentSchemaYML, pathWrite)
             pathWrite.close()
@@ -444,6 +478,13 @@ def update_metadata(jsonBody, sendToast):
             currentSchemaYMLModel['columns'] = [{"name": jsonBody['column']}]
             currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
         currentSchemaYMLModelColumn[jsonBody['property_name']] = jsonBody['new_value']
+        if(tangataConfig["order_schema_yml_by_name"] == 'true'):
+            if jsonBody['node_id'].split(".")[0] == 'model':
+                currentSchemaYML['models'] = sorted(currentSchemaYML['models'], key=lambda model: model['name'])
+            else:
+                currentSchemaYML['sources'] = sorted(currentSchemaYML['sources'], key=lambda model: model['name'])
+                for thisSource in currentSchemaYML['sources']:
+                    thisSource['tables'] = sorted(thisSource['tables'], key=lambda model: model['name'])
         pathWrite = open(schemaYMLPath, "w")
         yaml.dump(currentSchemaYML, pathWrite)
         pathWrite.close()
@@ -465,7 +506,6 @@ def update_metadata(jsonBody, sendToast):
             if len(list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))) == 0:
                 currentSchemaYMLModel['columns'].append({"name": jsonBody['column']})
             currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
-            print(currentSchemaYMLModelColumn)
         else:
             currentSchemaYMLModel['columns'] = {"name": jsonBody['column']}
             currentSchemaYMLModelColumn = list(filter(lambda d: d['name'] == jsonBody['column'], currentSchemaYMLModel['columns']))[0]
@@ -473,7 +513,13 @@ def update_metadata(jsonBody, sendToast):
             currentSchemaYMLModelColumn['tests'] = jsonBody['new_value']
         else:
             del currentSchemaYMLModelColumn['tests']
-        print(currentSchemaYMLModel)
+        if(tangataConfig["order_schema_yml_by_name"] == 'true'):
+            if jsonBody['node_id'].split(".")[0] == 'model':
+                currentSchemaYML['models'] = sorted(currentSchemaYML['models'], key=lambda model: model['name'])
+            else:
+                currentSchemaYML['sources'] = sorted(currentSchemaYML['sources'], key=lambda model: model['name'])
+                for thisSource in currentSchemaYML['sources']:
+                    thisSource['tables'] = sorted(thisSource['tables'], key=lambda model: model['name'])
         pathWrite = open(schemaYMLPath, "w")
         yaml.dump(currentSchemaYML, pathWrite)
         pathWrite.close()

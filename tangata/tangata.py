@@ -20,7 +20,8 @@ tangataConfig = { #Default settings below
     "schema_file_settings": "file_per_folder__folder_name", #Other options: file_per_folder__schema_yml; file_per_model__model_name
     "promotion_tag": "promoted",
     "demotion_tag": "demoted",
-    "use_plus_for_tags": "true"
+    "use_plus_for_tags": "true",
+    "order_schema_yml_by_name": "true"
     }
 
 def tangata():

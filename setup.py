@@ -17,9 +17,9 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Database :: Front-Ends",
         "Framework :: Flask",
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
     ],
-    version='0.1.19',
+    version='0.2.0',
     packages=find_packages(),
     entry_points={
         'console_scripts': ['tangata=tangata.tangata:tangata',
