@@ -37,5 +37,6 @@ setup(
         'python_dateutil==2.8.1',
         'PyYAML==5.4.1',
         'ruamel.base==1.0.0',
+        'ruamel.yaml==0.17.10',
     ],
 )
