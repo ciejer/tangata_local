@@ -41,7 +41,7 @@ This approach may take some time, but not out of reach - SQL is structured by de
 
 ## Where's the React code?
 
-This project was initially created as a npm-backed React app. The Javascript/React code for the front end is still in that repository as Python only needs the static output; the front end portion will be moved to a standalone repo at some point.
+This project was initially created as a npm-backed React app. The Javascript/React code for the front end is now located in https://github.com/ciejer/tangata_client
 
 ## I have an idea!
 
